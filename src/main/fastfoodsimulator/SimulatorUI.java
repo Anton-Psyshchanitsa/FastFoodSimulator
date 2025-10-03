@@ -29,22 +29,30 @@ public class SimulatorUI extends Application {
     private Label pickupOrderLabel;
     private Label servingLineLabel;
 
-    // Новые поля для симуляции (инкапсулированы)
-    private Queue<Customer> orderLine = new LinkedList<>(); // Очередь клиентов на заказ
-    private Queue<Order> kitchenQueue = new LinkedList<>(); // Очередь заказов на кухню
-    private Queue<Customer> servingLine = new LinkedList<>(); // Очередь клиентов на pickup (для Этапа 3)
-    private AtomicInteger orderCounter = new AtomicInteger(0); // Счётчик заказов
-    private AtomicInteger customerCounter = new AtomicInteger(0); // Счётчик клиентов
-    private ScheduledExecutorService customerArrivalExecutor; // Для прибытия клиентов
-    private ScheduledExecutorService uiUpdateExecutor; // Для обновления UI
-    private Thread orderTakerThread; // Поток для OrderTaker
-    private volatile boolean isRunning = false; // Флаг для остановки
+    // Очереди и счётчики
+    private Queue<Customer> orderLine = new LinkedList<>();
+    private Queue<Order> kitchenQueue = new LinkedList<>();
+    private Queue<Order> serviceQueue = new LinkedList<>(); // Новая: для готовых заказов
+    private Queue<Customer> servingLine = new LinkedList<>();
+    private AtomicInteger orderCounter = new AtomicInteger(0);
+    private AtomicInteger customerCounter = new AtomicInteger(0);
+
+    // Executors и threads
+    private ScheduledExecutorService customerArrivalExecutor;
+    private ScheduledExecutorService uiUpdateExecutor;
+    private Thread orderTakerThread;
+    private Thread cookThread;
+    private Thread serverThread;
+    private volatile boolean isRunning = false;
+
+    // Для отображения текущих
+    private int currentCookingOrder = -1;
+    private int currentServingOrder = -1;
 
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Fast Food Simulator");
 
-        // Панель ввода (верхняя часть)
         HBox inputPanel = new HBox(10);
         inputPanel.setPadding(new Insets(10));
         customerIntervalField = new TextField("5");
@@ -57,7 +65,6 @@ public class SimulatorUI extends Application {
                 startButton, stopButton
         );
 
-        // Центральная панель для симуляции
         GridPane simulationPanel = new GridPane();
         simulationPanel.setPadding(new Insets(10));
         simulationPanel.setHgap(10);
@@ -71,7 +78,7 @@ public class SimulatorUI extends Application {
         simulationPanel.add(new Label("Order Area:"), 1, 0);
         simulationPanel.add(currentOrderLabel, 1, 1);
 
-        kitchenArea = new TextArea("Waiting orders: 0\n");
+        kitchenArea = new TextArea("Waiting orders: 0\nCurrent preparing: None");
         kitchenArea.setEditable(false);
         kitchenArea.setPrefHeight(100);
         simulationPanel.add(new Label("Kitchen Area:"), 2, 0);
@@ -91,11 +98,10 @@ public class SimulatorUI extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        // Логика кнопки Start
         startButton.setOnAction(e -> {
             try {
                 int customerInterval = Integer.parseInt(customerIntervalField.getText());
-                int fulfillmentInterval = Integer.parseInt(orderFulfillmentField.getText()); // Сохраним для Этапа 3
+                int fulfillmentInterval = Integer.parseInt(orderFulfillmentField.getText());
                 if (customerInterval <= 0 || fulfillmentInterval <= 0) {
                     showWarning("Intervals must be positive integers!");
                     return;
@@ -106,40 +112,33 @@ public class SimulatorUI extends Application {
             }
         });
 
-        // Логика кнопки Stop
         stopButton.setOnAction(e -> stopSimulation());
     }
 
-    // Метод запуска симуляции
     private void startSimulation(int customerInterval, int fulfillmentInterval) {
-        if (isRunning) return; // Не запускать заново
+        if (isRunning) return;
         isRunning = true;
 
-        // Инициализация очередей и счётчиков
         orderLine.clear();
         kitchenQueue.clear();
+        serviceQueue.clear();
         servingLine.clear();
         orderCounter.set(0);
         customerCounter.set(0);
+        currentCookingOrder = -1;
+        currentServingOrder = -1;
 
-        // Создание OrderTaker
-        OrderTaker orderTaker = new OrderTaker(1, orderLine, kitchenQueue, orderCounter);
+        // Создание ролей
+        OrderTaker orderTaker = new OrderTaker(1, orderLine, kitchenQueue, servingLine, orderCounter, this);
+        Cook cook = new Cook(1, kitchenQueue, serviceQueue, fulfillmentInterval);
+        Server server = new Server(1, serviceQueue);
 
-        // Поток для OrderTaker: обрабатывает клиентов каждые 1 сек (симуляция времени взятия заказа)
+        // Поток для OrderTaker
         orderTakerThread = new Thread(() -> {
             while (isRunning) {
                 orderTaker.performAction();
-                // После обработки: клиент перемещается в servingLine
-                if (orderTaker.getStatus().startsWith("Processed")) {
-                    // Найти последнего обработанного клиента (для простоты, предполагаем последнего в логике)
-                    // В реальности: можно добавить метод, но пока симулируем
-                    int lastCustomerId = customerCounter.get();
-                    Customer processedCustomer = new Customer(lastCustomerId); // Заглушка, в полной версии - реальный
-                    servingLine.add(processedCustomer); // Переместить в serving line
-                    Platform.runLater(() -> updateCurrentOrder(orderCounter.get())); // Обновить UI
-                }
                 try {
-                    Thread.sleep(1000); // Интервал обработки (можно настроить)
+                    Thread.sleep(1000); // Интервал обработки
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                 }
@@ -147,45 +146,81 @@ public class SimulatorUI extends Application {
         });
         orderTakerThread.start();
 
-        // ScheduledExecutor для прибытия клиентов с фиксированным интервалом
+        // Поток для Cook
+        cookThread = new Thread(() -> {
+            while (isRunning) {
+                cook.performAction();
+                if (cook.getStatus().startsWith("Preparing")) {
+                    currentCookingOrder = Integer.parseInt(cook.getStatus().split(" ")[2]); // Парсинг для UI
+                } else if (cook.getStatus().startsWith("Completed")) {
+                    currentCookingOrder = -1;
+                }
+            }
+        });
+        cookThread.start();
+
+        // Поток для Server (каждые 1 сек проверяет)
+        serverThread = new Thread(() -> {
+            while (isRunning) {
+                server.performAction();
+                if (server.getStatus().startsWith("Serving")) {
+                    currentServingOrder = Integer.parseInt(server.getStatus().split(" ")[2]);
+                    Platform.runLater(() -> updatePickup(currentServingOrder, servingLine.size()));
+                }
+                try {
+                    Thread.sleep(1000); // Интервал обслуживания
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+        serverThread.start();
+
+        // Прибытие клиентов
         customerArrivalExecutor = Executors.newScheduledThreadPool(1);
         customerArrivalExecutor.scheduleAtFixedRate(() -> {
             if (isRunning) {
                 int customerId = customerCounter.incrementAndGet();
                 Customer newCustomer = new Customer(customerId);
                 orderLine.add(newCustomer);
-                Platform.runLater(() -> updateOrderLine(orderLine.size())); // Обновить UI thread-safe
+                Platform.runLater(() -> updateOrderLine(orderLine.size()));
             }
         }, 0, customerInterval, TimeUnit.SECONDS);
 
-        // ScheduledExecutor для обновления UI каждые 1 сек
+        // Обновление UI каждые 1 сек
         uiUpdateExecutor = Executors.newScheduledThreadPool(1);
         uiUpdateExecutor.scheduleAtFixedRate(() -> {
             if (isRunning) {
                 Platform.runLater(() -> {
                     updateOrderLine(orderLine.size());
-                    updateKitchen(getKitchenOrdersString(), kitchenQueue.size());
-                    updatePickup(-1, servingLine.size()); // -1 значит none, для Этапа 3
+                    updateKitchen(getKitchenOrdersString(), kitchenQueue.size(), currentCookingOrder);
+                    updatePickup(currentServingOrder, servingLine.size());
                 });
             }
         }, 0, 1, TimeUnit.SECONDS);
     }
 
-    // Метод остановки симуляции
     private void stopSimulation() {
         isRunning = false;
         if (customerArrivalExecutor != null) customerArrivalExecutor.shutdownNow();
         if (uiUpdateExecutor != null) uiUpdateExecutor.shutdownNow();
         if (orderTakerThread != null) orderTakerThread.interrupt();
+        if (cookThread != null) cookThread.interrupt();
+        if (serverThread != null) serverThread.interrupt();
+
+        // Завершить unfinished futures для чистоты
+        for (Order order : kitchenQueue) order.completePreparation();
+        for (Order order : serviceQueue) order.completeServing();
+
         Platform.runLater(() -> {
             updateOrderLine(0);
             updateCurrentOrder(-1);
-            updateKitchen("", 0);
+            updateKitchen("", 0, -1);
             updatePickup(-1, 0);
         });
     }
 
-    // Вспомогательный метод для строки заказов на кухне
+    // Вспомогательные методы
     private String getKitchenOrdersString() {
         StringBuilder sb = new StringBuilder();
         for (Order order : kitchenQueue) {
@@ -194,7 +229,6 @@ public class SimulatorUI extends Application {
         return sb.toString();
     }
 
-    // Метод для показа предупреждения
     private void showWarning(String message) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle("Invalid Input");
@@ -203,7 +237,7 @@ public class SimulatorUI extends Application {
         alert.showAndWait();
     }
 
-    // Методы обновления UI (расширенные)
+    // Обновлённые методы UI
     public void updateOrderLine(int count) {
         orderLineLabel.setText("Customers in line: " + count);
     }
@@ -212,8 +246,8 @@ public class SimulatorUI extends Application {
         currentOrderLabel.setText("Current Order: " + (orderNumber > 0 ? orderNumber : "None"));
     }
 
-    public void updateKitchen(String orders, int count) {
-        kitchenArea.setText("Waiting orders: " + count + "\n" + orders);
+    public void updateKitchen(String orders, int count, int cookingOrder) {
+        kitchenArea.setText("Waiting orders: " + count + "\nCurrent preparing: " + (cookingOrder > 0 ? cookingOrder : "None") + "\n" + orders);
     }
 
     public void updatePickup(int orderNumber, int waitingCustomers) {
