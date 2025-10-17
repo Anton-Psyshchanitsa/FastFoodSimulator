@@ -4,13 +4,8 @@ import second.fastfoodsimulator.model.queues.KitchenQueue;
 import second.fastfoodsimulator.util.OrderNumberGenerator;
 
 public class OrderTaker {
-    private int currentOrderId;
-    private boolean busy;
-
-    public OrderTaker() {
-        this.currentOrderId = -1;
-        this.busy = false;
-    }
+    private int currentOrderId = -1;
+    private boolean busy = false;
 
     public synchronized int takeOrder() {
         if (busy) return -1;

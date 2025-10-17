@@ -2,11 +2,15 @@ package second.fastfoodsimulator.view.controllers;
 
 import javafx.animation.*;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Button;
+import javafx.scene.image.Image;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.animation.TranslateTransition;
+import javafx.stage.Stage;
 import javafx.util.Duration;
 import second.fastfoodsimulator.model.entities.Customer;
 import second.fastfoodsimulator.model.simulation.SimulationManager;
@@ -33,6 +37,11 @@ public class MainController {
     private Label servingLineCount;
 
     @FXML
+    private Button startButton;
+    @FXML
+    private Button stopButton;
+
+    @FXML
     private VBox customerQueueBox;
     @FXML
     private VBox kitchenQueueBox;
@@ -53,6 +62,9 @@ public class MainController {
     private void initialize() {
         initializeAnimations();
         setupEventHandlers();
+
+        startButton.setOnAction(event -> startSimulation());
+        stopButton.setOnAction(event -> stopSimulation());
     }
 
     private void initializeAnimations() {
@@ -138,4 +150,70 @@ public class MainController {
 
         sequentialTransition.play();
     }
+
+    @FXML
+    private void startSimulation() {
+        try {
+            int customerInterval = Integer.parseInt(customerIntervalField.getText());
+            int orderInterval = Integer.parseInt(orderIntervalField.getText());
+
+            if (customerInterval <= 0 || orderInterval <= 0) {
+                showError("Интервалы должны быть положительными числами");
+                return;
+            }
+
+            // Запускаем симуляцию
+            simulationManager.startSimulation(customerInterval, orderInterval);
+
+            // Блокируем поля ввода
+            customerIntervalField.setDisable(true);
+            orderIntervalField.setDisable(true);
+
+            System.out.println("Симуляция запущена");
+        } catch (NumberFormatException e) {
+            showError("Неверный формат ввода");
+        }
+    }
+
+    @FXML
+    private void stopSimulation() {
+        // Останавливаем симуляцию
+        simulationManager.stopSimulation();
+
+        // Разблокируем поля ввода
+        customerIntervalField.setDisable(false);
+        orderIntervalField.setDisable(false);
+
+        // Сбрасываем состояние интерфейса
+        currentOrderTaker.setText("Нет заказа");
+        currentKitchenOrder.setText("Нет заказа");
+        currentPickupOrder.setText("Нет заказа");
+
+        // Очищаем очереди
+        customerQueueBox.getChildren().clear();
+        kitchenQueueBox.getChildren().clear();
+
+        // Сбрасываем счетчики
+        customerQueueCount.setText("0");
+        kitchenQueueCount.setText("0");
+        servingLineCount.setText("0");
+
+        System.out.println("Симуляция остановлена");
+    }
+
+    private void showError(String message) {
+        // Создаем всплывающее окно ошибки
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Ошибка");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+
+        // Добавляем иконку ошибки
+        Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
+        stage.getIcons().add(new Image(getClass().getResource("/styles/error-icon.png").toExternalForm()));
+
+        // Показываем окно и ждем закрытия
+        alert.showAndWait();
+    }
+
 }

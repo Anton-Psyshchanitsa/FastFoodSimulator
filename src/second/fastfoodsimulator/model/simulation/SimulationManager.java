@@ -28,6 +28,7 @@ public class SimulationManager {
     }
 
     public void startSimulation(int customerInterval, int orderInterval) {
+        System.out.println("Запуск симуляции с интервалами: " + customerInterval + " и " + orderInterval);
         executor.scheduleAtFixedRate(this::generateCustomer, 0, customerInterval, TimeUnit.MILLISECONDS);
         executor.scheduleAtFixedRate(this::processOrder, 0, orderInterval, TimeUnit.MILLISECONDS);
     }
@@ -43,6 +44,7 @@ public class SimulationManager {
         Platform.runLater(() -> {
             controller.addCustomerToQueue(customer);
             controller.updateCustomerQueueCount(customerCount);
+            System.out.println("Добавлен клиент #" + customerCount);
         });
     }
 
@@ -56,6 +58,7 @@ public class SimulationManager {
                 Platform.runLater(() -> {
                     controller.updateOrderTakerStatus(orderId);
                     controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
+                    System.out.println("Обработан заказ #" + orderId);
                 });
             }
         }
