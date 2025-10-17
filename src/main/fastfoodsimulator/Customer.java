@@ -1,8 +1,9 @@
 package main.fastfoodsimulator;
 
 import javafx.application.Platform;
-import java.util.concurrent.CompletableFuture;
+
 import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
 
 public class Customer extends SimulatorEntity {
     private Order order;
@@ -17,17 +18,18 @@ public class Customer extends SimulatorEntity {
         setStatus("Waiting for order");
     }
 
-    public void placeOrder(Order newOrder, Queue<Customer> servingLine, SimulatorUI ui) {
+    public void placeOrder(Order newOrder, Queue<Customer> servingLine, SimulatorUI ui, AnimationManager animationManager) {
         this.order = newOrder;
         setStatus("Order placed: " + newOrder.getOrderNumber());
-        servingLine.add(this); // Добавить в serving line
-        // Асинхронно ждать servingFuture и уйти при завершении
+        servingLine.add(this);
+        animationManager.animateCustomerMovement(getId(), 50, 100); // Старт анимации от order line (координаты примерные)
         new Thread(() -> {
             try {
-                order.getServingFuture().get(); // Ждать завершения (блокирует этот поток)
+                order.getServingFuture().get();
                 setStatus("Picked up order " + order.getOrderNumber());
-                servingLine.remove(this); // Удалить из очереди
-                Platform.runLater(() -> ui.updatePickup(0, servingLine.size())); // Обновить UI
+                servingLine.remove(this);
+                Platform.runLater(() -> ui.updatePickup(0, servingLine.size()));
+                // Анимация уже запущена, она завершится автоматически
             } catch (Exception e) {
                 Thread.currentThread().interrupt();
             }

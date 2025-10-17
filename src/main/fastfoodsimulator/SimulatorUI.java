@@ -4,10 +4,8 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
+import javafx.scene.layout.*;
 import javafx.scene.control.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 
 import java.util.LinkedList;
@@ -32,7 +30,7 @@ public class SimulatorUI extends Application {
     // Очереди и счётчики
     private Queue<Customer> orderLine = new LinkedList<>();
     private Queue<Order> kitchenQueue = new LinkedList<>();
-    private Queue<Order> serviceQueue = new LinkedList<>(); // Новая: для готовых заказов
+    private Queue<Order> serviceQueue = new LinkedList<>();
     private Queue<Customer> servingLine = new LinkedList<>();
     private AtomicInteger orderCounter = new AtomicInteger(0);
     private AtomicInteger customerCounter = new AtomicInteger(0);
@@ -48,6 +46,10 @@ public class SimulatorUI extends Application {
     // Для отображения текущих
     private int currentCookingOrder = -1;
     private int currentServingOrder = -1;
+
+    // Анимация
+    private Pane animationPane;
+    private AnimationManager animationManager;
 
     @Override
     public void start(Stage primaryStage) {
@@ -66,6 +68,12 @@ public class SimulatorUI extends Application {
         );
 
         GridPane simulationPanel = new GridPane();
+        simulationPanel.getColumnConstraints().addAll(
+                createColumnConstraint(0.25), // Order Line
+                createColumnConstraint(0.25), // Order Area
+                createColumnConstraint(0.25), // Kitchen Area
+                createColumnConstraint(0.25)  // Pickup Area
+        );
         simulationPanel.setPadding(new Insets(10));
         simulationPanel.setHgap(10);
         simulationPanel.setVgap(10);
@@ -90,9 +98,15 @@ public class SimulatorUI extends Application {
         simulationPanel.add(pickupOrderLabel, 3, 1);
         simulationPanel.add(servingLineLabel, 3, 2);
 
+        // Панель для анимаций (внизу)
+        animationPane = new Pane();
+        animationPane.setPrefHeight(200);
+        animationPane.setStyle("-fx-background-color: lightgray;"); // Для видимости
+
         BorderPane root = new BorderPane();
         root.setTop(inputPanel);
         root.setCenter(simulationPanel);
+        root.setBottom(animationPane);
 
         Scene scene = new Scene(root, 800, 600);
         primaryStage.setScene(scene);
@@ -128,9 +142,12 @@ public class SimulatorUI extends Application {
         currentCookingOrder = -1;
         currentServingOrder = -1;
 
-        // Создание ролей
-        OrderTaker orderTaker = new OrderTaker(1, orderLine, kitchenQueue, servingLine, orderCounter, this);
-        Cook cook = new Cook(1, kitchenQueue, serviceQueue, fulfillmentInterval);
+        // Инициализация анимации
+        animationManager = new AnimationManager(animationPane);
+
+        // Создание ролей с передачей animationManager
+        OrderTaker orderTaker = new OrderTaker(1, orderLine, kitchenQueue, servingLine, orderCounter, this, animationManager);
+        Cook cook = new Cook(1, kitchenQueue, serviceQueue, fulfillmentInterval, animationManager);
         Server server = new Server(1, serviceQueue);
 
         // Поток для OrderTaker
@@ -138,7 +155,7 @@ public class SimulatorUI extends Application {
             while (isRunning) {
                 orderTaker.performAction();
                 try {
-                    Thread.sleep(1000); // Интервал обработки
+                    Thread.sleep(1000);
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                 }
@@ -150,27 +167,32 @@ public class SimulatorUI extends Application {
         cookThread = new Thread(() -> {
             while (isRunning) {
                 cook.performAction();
-                if (cook.getStatus().startsWith("Preparing")) {
-                    currentCookingOrder = Integer.parseInt(cook.getStatus().split(" ")[2]); // Парсинг для UI
-                } else if (cook.getStatus().startsWith("Completed")) {
+                try {
+                    if (cook.getStatus().startsWith("Preparing order ")) {
+                        currentCookingOrder = Integer.parseInt(cook.getStatus().split("order ")[1].split(" ")[0]);
+                    } else if (cook.getStatus().startsWith("Completed")) {
+                        currentCookingOrder = -1;
+                    }
+                } catch (Exception ex) {
+                    System.out.println("Error parsing cook status: " + ex.getMessage());
                     currentCookingOrder = -1;
                 }
             }
         });
         cookThread.start();
 
-        // Поток для Server (каждые 1 сек проверяет)
+        // Поток для Server
         serverThread = new Thread(() -> {
             while (isRunning) {
                 server.performAction();
-                if (server.getStatus().startsWith("Serving")) {
-                    currentServingOrder = Integer.parseInt(server.getStatus().split(" ")[2]);
-                    Platform.runLater(() -> updatePickup(currentServingOrder, servingLine.size()));
-                }
                 try {
-                    Thread.sleep(1000); // Интервал обслуживания
-                } catch (InterruptedException ex) {
-                    Thread.currentThread().interrupt();
+                    if (server.getStatus().startsWith("Serving order ")) {
+                        currentServingOrder = Integer.parseInt(server.getStatus().split("order ")[1].split(" ")[0]);
+                        Platform.runLater(() -> updatePickup(currentServingOrder, servingLine.size()));
+                    }
+                } catch (Exception ex) {
+                    System.out.println("Error parsing server status: " + ex.getMessage());
+                    currentServingOrder = -1;
                 }
             }
         });
@@ -198,6 +220,18 @@ public class SimulatorUI extends Application {
                 });
             }
         }, 0, 1, TimeUnit.SECONDS);
+
+        uiUpdateExecutor.scheduleAtFixedRate(() -> {
+            if (isRunning) {
+                Platform.runLater(() -> {
+                    updateOrderLine(orderLine.size());
+                    updateCurrentOrder(orderCounter.get()); // Добавлено для гарантии
+                    updateKitchen(getKitchenOrdersString(), kitchenQueue.size(), currentCookingOrder);
+                    updatePickup(currentServingOrder, servingLine.size());
+                });
+            }
+        }, 0, 1, TimeUnit.SECONDS);
+
     }
 
     private void stopSimulation() {
@@ -208,9 +242,10 @@ public class SimulatorUI extends Application {
         if (cookThread != null) cookThread.interrupt();
         if (serverThread != null) serverThread.interrupt();
 
-        // Завершить unfinished futures для чистоты
+        // Завершить unfinished futures и очистить анимации
         for (Order order : kitchenQueue) order.completePreparation();
         for (Order order : serviceQueue) order.completeServing();
+        if (animationManager != null) animationManager.clearAnimations();
 
         Platform.runLater(() -> {
             updateOrderLine(0);
@@ -220,7 +255,7 @@ public class SimulatorUI extends Application {
         });
     }
 
-    // Вспомогательные методы
+    // Вспомогательные методы (без изменений)
     private String getKitchenOrdersString() {
         StringBuilder sb = new StringBuilder();
         for (Order order : kitchenQueue) {
@@ -237,7 +272,6 @@ public class SimulatorUI extends Application {
         alert.showAndWait();
     }
 
-    // Обновлённые методы UI
     public void updateOrderLine(int count) {
         orderLineLabel.setText("Customers in line: " + count);
     }
@@ -258,4 +292,15 @@ public class SimulatorUI extends Application {
     public static void main(String[] args) {
         launch(args);
     }
+
+    private ColumnConstraints createColumnConstraint(double percentWidth) {
+        ColumnConstraints cc = new ColumnConstraints();
+        cc.setPercentWidth(percentWidth * 100);
+        cc.setHgrow(Priority.ALWAYS);
+        cc.setFillWidth(true);
+        return cc;
+    }
+
+
+
 }
