@@ -1,6 +1,7 @@
 package second.fastfoodsimulator.view.controllers;
 
 import javafx.animation.*;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
@@ -8,12 +9,17 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Button;
 import javafx.scene.image.Image;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.animation.TranslateTransition;
+import javafx.animation.Timeline;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import second.fastfoodsimulator.model.entities.Customer;
+import second.fastfoodsimulator.model.entities.Order;
 import second.fastfoodsimulator.model.simulation.SimulationManager;
+import javafx.animation.Animation;
+import javafx.animation.ScaleTransition;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,10 +55,17 @@ public class MainController {
     private Circle orderTakerIndicator;
     @FXML
     private Circle kitchenIndicator;
+    @FXML
+    private Circle customerIndicator;
 
     private final SimulationManager simulationManager;
     private final List<Customer> customerQueue = new ArrayList<>();
     private final List<Label> customerLabels = new ArrayList<>();
+
+    private Animation orderTakerPulseAnimation;
+    private Animation customerPulseAnimation;
+    private Animation kitchenPulseAnimation;
+
 
     public MainController() {
         this.simulationManager = new SimulationManager(this);
@@ -60,11 +73,36 @@ public class MainController {
 
     @FXML
     private void initialize() {
+        System.out.println("Инициализация MainController");
+
+        // Инициализация анимаций
         initializeAnimations();
+
+        // Настройка обработчиков
         setupEventHandlers();
 
-        startButton.setOnAction(event -> startSimulation());
-        stopButton.setOnAction(event -> stopSimulation());
+        // Обработчики кнопок
+        startButton.setOnAction(event -> {
+            System.out.println("Нажата кнопка Старт");
+            startSimulation();
+        });
+
+        stopButton.setOnAction(event -> {
+            System.out.println("Нажата кнопка Стоп");
+            stopSimulation();
+        });
+
+        // Инициализация начальных значений
+        resetUI();
+    }
+
+    private void resetUI() {
+        customerQueueCount.setText("0");
+        currentOrderTaker.setText("Нет заказа");
+        currentKitchenOrder.setText("Нет заказа");
+        kitchenQueueCount.setText("0");
+        currentPickupOrder.setText("Нет заказа");
+        servingLineCount.setText("0");
     }
 
     private void initializeAnimations() {
@@ -72,7 +110,7 @@ public class MainController {
         orderTakerIndicator.setFill(javafx.scene.paint.Color.GRAY);
         final Timeline orderTakerTimeline = new Timeline(
                 new KeyFrame(Duration.ZERO, new KeyValue(orderTakerIndicator.fillProperty(), javafx.scene.paint.Color.GRAY)),
-                new KeyFrame(Duration.seconds(1), new KeyValue(orderTakerIndicator.fillProperty(), javafx.scene.paint.Color.LIMEGREEN))
+                new KeyFrame(Duration.seconds(2), new KeyValue(orderTakerIndicator.fillProperty(), javafx.scene.paint.Color.LIMEGREEN))
         );
         orderTakerTimeline.setAutoReverse(true);
         orderTakerTimeline.setCycleCount(Timeline.INDEFINITE);
@@ -82,7 +120,7 @@ public class MainController {
         kitchenIndicator.setFill(javafx.scene.paint.Color.GRAY);
         final Timeline kitchenTimeline = new Timeline(
                 new KeyFrame(Duration.ZERO, new KeyValue(kitchenIndicator.fillProperty(), javafx.scene.paint.Color.GRAY)),
-                new KeyFrame(Duration.seconds(1.5), new KeyValue(kitchenIndicator.fillProperty(), javafx.scene.paint.Color.ORANGERED))
+                new KeyFrame(Duration.seconds(3), new KeyValue(kitchenIndicator.fillProperty(), javafx.scene.paint.Color.ORANGERED))
         );
         kitchenTimeline.setAutoReverse(true);
         kitchenTimeline.setCycleCount(Timeline.INDEFINITE);
@@ -100,37 +138,245 @@ public class MainController {
     }
 
     public void addCustomerToQueue(Customer customer) {
-        Label customerLabel = new Label("Заказ #" + customer.getOrderId());
-        customerLabel.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-padding: 5; -fx-background-radius: 5;");
+        System.out.println("Добавление клиента #" + customer.getOrderId());
 
-        // Анимация появления клиента
-        FadeTransition fadeIn = new FadeTransition(Duration.millis(500), customerLabel);
-        fadeIn.setFromValue(0.0);
-        fadeIn.setToValue(1.0);
-
-        TranslateTransition slideIn = new TranslateTransition(Duration.millis(500), customerLabel);
-        slideIn.setFromY(-20);
-        slideIn.setToY(0);
-
-        ParallelTransition parallelTransition = new ParallelTransition(fadeIn, slideIn);
-
-        customerQueueBox.getChildren().add(customerLabel);
-        customerLabels.add(customerLabel);
+        // Добавляем клиента в список
         customerQueue.add(customer);
 
-        parallelTransition.play();
+        // Обновляем счетчик и UI в потоке JavaFX
+        Platform.runLater(() -> {
+            updateCustomerQueueCount(customerQueue.size());
+
+            // Создаем метку для клиента
+            Label customerLabel = new Label("Клиент #" + customer.getOrderId());
+            customerLabel.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-padding: 5; -fx-background-radius: 5;");
+
+            // Анимация появления клиента
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(500), customerLabel);
+            fadeIn.setFromValue(0.0);
+            fadeIn.setToValue(1.0);
+
+            TranslateTransition slideIn = new TranslateTransition(Duration.millis(500), customerLabel);
+            slideIn.setFromY(-20);
+            slideIn.setToY(0);
+
+            ParallelTransition parallelTransition = new ParallelTransition(fadeIn, slideIn);
+
+            customerQueueBox.getChildren().add(customerLabel);
+            customerLabels.add(customerLabel);
+
+            parallelTransition.play();
+
+            // Обновляем индикатор активности
+            updateCustomerIndicator();
+        });
     }
 
-    public void updateCustomerQueueCount(int count) {
+    public void removeCustomerFromQueue(int orderId) {
+        System.out.println("Удаление клиента #" + orderId);
+
+        // Удаляем клиента из списка
+        customerQueue.removeIf(customer -> customer.getOrderId() == orderId);
+
+        // Обновляем счетчик и UI в потоке JavaFX
+        Platform.runLater(() -> {
+            updateCustomerQueueCount(customerQueue.size());
+
+            // Удаляем соответствующий лейбл
+            customerLabels.removeIf(label -> label.getText().contains("Клиент #" + orderId));
+            customerQueueBox.getChildren().removeIf(node ->
+                    node instanceof Label && ((Label) node).getText().contains("Клиент #" + orderId)
+            );
+
+            // Обновляем индикатор активности
+            updateCustomerIndicator();
+        });
+    }
+
+    private void updateCustomerQueueCount(int count) {
+        System.out.println("Обновление счетчика клиентов: " + count);
+
+        // Простое обновление текста без анимации для гарантии видимости
+        customerQueueCount.setText(String.valueOf(count));
+
+        // Можно добавить анимацию, но только если она работает
+        /*
         animateTextChange(customerQueueCount, String.valueOf(count));
+        */
+    }
+
+
+
+    private void updateCustomerIndicator() {
+        int count = customerQueue.size();
+
+        if (count > 0) {
+            customerIndicator.setFill(Color.LIMEGREEN);
+
+            // Запускаем пульсацию
+            if (customerPulseAnimation != null) {
+                customerPulseAnimation.stop();
+            }
+
+            ScaleTransition pulse = new ScaleTransition(Duration.millis(600), customerIndicator);
+            pulse.setFromX(1.0);
+            pulse.setFromY(1.0);
+            pulse.setToX(0.7);
+            pulse.setToY(0.7);
+            pulse.setAutoReverse(true);
+            pulse.setCycleCount(Animation.INDEFINITE);
+            pulse.play();
+
+            customerPulseAnimation = pulse;
+        } else {
+            customerIndicator.setFill(Color.GRAY);
+            if (customerPulseAnimation != null) {
+                customerPulseAnimation.stop();
+                customerPulseAnimation = null;
+            }
+        }
     }
 
     public void updateOrderTakerStatus(int orderId) {
-        animateTextChange(currentOrderTaker, "Заказ #" + orderId);
+        System.out.println("Обновление статуса кассира: orderId=" + orderId);
+
+        Platform.runLater(() -> {
+            if (orderId == -1) {
+                currentOrderTaker.setText("Нет заказа");
+                orderTakerIndicator.setFill(Color.GRAY);
+                if (orderTakerPulseAnimation != null) {
+                    orderTakerPulseAnimation.stop();
+                    orderTakerPulseAnimation = null;
+                }
+            } else {
+                currentOrderTaker.setText("Заказ #" + orderId);
+                orderTakerIndicator.setFill(Color.LIMEGREEN);
+
+                if (orderTakerPulseAnimation != null) {
+                    orderTakerPulseAnimation.stop();
+                }
+
+                ScaleTransition pulse = new ScaleTransition(Duration.millis(500), orderTakerIndicator);
+                pulse.setFromX(1.0);
+                pulse.setFromY(1.0);
+                pulse.setToX(0.6);
+                pulse.setToY(0.6);
+                pulse.setAutoReverse(true);
+                pulse.setCycleCount(Animation.INDEFINITE);
+                pulse.play();
+
+                orderTakerPulseAnimation = pulse;
+            }
+        });
     }
 
     public void updateKitchenQueue(int count) {
-        animateTextChange(kitchenQueueCount, String.valueOf(count));
+        System.out.println("Обновление кухни: " + count);
+
+        Platform.runLater(() -> {
+            kitchenQueueBox.getChildren().clear();
+            kitchenQueueCount.setText(String.valueOf(count));
+
+            if (count > 0) {
+                for (int i = 0; i < count; i++) {
+                    final int orderNum = i + 1;
+                    Label orderLabel = new Label("Заказ #" + orderNum);
+                    orderLabel.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-padding: 5; -fx-background-radius: 5;");
+
+                    FadeTransition fadeIn = new FadeTransition(Duration.millis(300), orderLabel);
+                    fadeIn.setFromValue(0.0);
+                    fadeIn.setToValue(1.0);
+
+                    kitchenQueueBox.getChildren().add(orderLabel);
+                    fadeIn.play();
+                }
+
+                kitchenIndicator.setFill(Color.ORANGERED);
+
+                if (kitchenPulseAnimation != null) {
+                    kitchenPulseAnimation.stop();
+                }
+
+                ScaleTransition pulse = new ScaleTransition(Duration.millis(700), kitchenIndicator);
+                pulse.setFromX(1.0);
+                pulse.setFromY(1.0);
+                pulse.setToX(0.7);
+                pulse.setToY(0.7);
+                pulse.setAutoReverse(true);
+                pulse.setCycleCount(Animation.INDEFINITE);
+                pulse.play();
+
+                kitchenPulseAnimation = pulse;
+            } else {
+                Label emptyLabel = new Label("Нет заказов");
+                emptyLabel.setStyle("-fx-text-fill: #95a5a6; -fx-font-style: italic;");
+                kitchenQueueBox.getChildren().add(emptyLabel);
+
+                kitchenIndicator.setFill(Color.GRAY);
+                if (kitchenPulseAnimation != null) {
+                    kitchenPulseAnimation.stop();
+                    kitchenPulseAnimation = null;
+                }
+            }
+        });
+    }
+
+    public void updateKitchenOrders(List<Order> orders) {
+        System.out.println("Обновление кухни: " + orders.size() + " заказов");
+
+        Platform.runLater(() -> {
+            kitchenQueueBox.getChildren().clear();
+
+            if (orders.size() > 0) {
+                // Показываем список заказов
+                for (Order order : orders) {
+                    Label orderLabel = new Label("Заказ #" + order.getOrderId());
+                    orderLabel.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-padding: 5; -fx-background-radius: 5;");
+
+                    FadeTransition fadeIn = new FadeTransition(Duration.millis(300), orderLabel);
+                    fadeIn.setFromValue(0.0);
+                    fadeIn.setToValue(1.0);
+
+                    kitchenQueueBox.getChildren().add(orderLabel);
+                    fadeIn.play();
+                }
+
+                // Показываем счетчик
+                kitchenQueueCount.setText(String.valueOf(orders.size()));
+
+                // Активируем индикатор
+                kitchenIndicator.setFill(Color.ORANGERED);
+
+                if (kitchenPulseAnimation != null) {
+                    kitchenPulseAnimation.stop();
+                }
+
+                ScaleTransition pulse = new ScaleTransition(Duration.millis(700), kitchenIndicator);
+                pulse.setFromX(1.0);
+                pulse.setFromY(1.0);
+                pulse.setToX(0.7);
+                pulse.setToY(0.7);
+                pulse.setAutoReverse(true);
+                pulse.setCycleCount(Animation.INDEFINITE);
+                pulse.play();
+
+                kitchenPulseAnimation = pulse;
+            } else {
+                // Показываем "Нет заказов" только когда кухня пуста
+                Label emptyLabel = new Label("Нет заказов");
+                emptyLabel.setStyle("-fx-text-fill: #95a5a6; -fx-font-style: italic;");
+                kitchenQueueBox.getChildren().add(emptyLabel);
+
+                kitchenQueueCount.setText("0");
+
+                // Деактивируем индикатор
+                kitchenIndicator.setFill(Color.GRAY);
+                if (kitchenPulseAnimation != null) {
+                    kitchenPulseAnimation.stop();
+                    kitchenPulseAnimation = null;
+                }
+            }
+        });
     }
 
     private void animateTextChange(Label label, String newText) {
@@ -198,6 +444,29 @@ public class MainController {
         kitchenQueueCount.setText("0");
         servingLineCount.setText("0");
 
+        simulationManager.stopSimulation();
+        customerIntervalField.setDisable(false);
+        orderIntervalField.setDisable(false);
+
+        // Останавливаем все анимации
+        if (orderTakerPulseAnimation != null) {
+            orderTakerPulseAnimation.stop();
+            orderTakerPulseAnimation = null;
+        }
+        if (customerPulseAnimation != null) {
+            customerPulseAnimation.stop();
+            customerPulseAnimation = null;
+        }
+        //if (kitchenPulseAnimation != null) {
+           // kitchenPulseAnimation.stop();
+           // kitchenPulseAnimation = null;
+       // }
+
+        // Сбрасываем состояние индикаторов
+        customerIndicator.setFill(Color.GRAY);
+        orderTakerIndicator.setFill(Color.GRAY);
+        kitchenIndicator.setFill(Color.GRAY);
+
         System.out.println("Симуляция остановлена");
     }
 
@@ -215,5 +484,7 @@ public class MainController {
         // Показываем окно и ждем закрытия
         alert.showAndWait();
     }
+
+
 
 }

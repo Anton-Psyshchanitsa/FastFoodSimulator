@@ -28,7 +28,6 @@ public class SimulationManager {
     }
 
     public void startSimulation(int customerInterval, int orderInterval) {
-        System.out.println("Запуск симуляции с интервалами: " + customerInterval + " и " + orderInterval);
         executor.scheduleAtFixedRate(this::generateCustomer, 0, customerInterval, TimeUnit.MILLISECONDS);
         executor.scheduleAtFixedRate(this::processOrder, 0, orderInterval, TimeUnit.MILLISECONDS);
     }
@@ -43,8 +42,8 @@ public class SimulationManager {
 
         Platform.runLater(() -> {
             controller.addCustomerToQueue(customer);
-            controller.updateCustomerQueueCount(customerCount);
-            System.out.println("Добавлен клиент #" + customerCount);
+            // УДАЛИТЕ ЭТУ СТРОКУ:
+            // controller.updateCustomerQueueCount(customerQueue.size());
         });
     }
 
@@ -56,10 +55,23 @@ public class SimulationManager {
                 kitchenQueue.addOrder(order);
 
                 Platform.runLater(() -> {
+                    controller.removeCustomerFromQueue(orderId);
                     controller.updateOrderTakerStatus(orderId);
+                    // Передаем количество заказов на кухне
                     controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
-                    System.out.println("Обработан заказ #" + orderId);
+                    System.out.println("Заказ #" + orderId + " добавлен в кухонную очередь");
                 });
+
+                // Имитация обработки заказа
+                executor.schedule(() -> {
+                    orderTaker.completeOrder();
+                    Platform.runLater(() -> {
+                        controller.updateOrderTakerStatus(-1);
+                        // После обработки обновляем количество заказов на кухне
+                        controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
+                        System.out.println("Кассир свободен");
+                    });
+                }, 500, TimeUnit.MILLISECONDS);
             }
         }
     }

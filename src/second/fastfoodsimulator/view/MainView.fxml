@@ -55,7 +55,7 @@
                 <Label text="Кухня" style="-fx-font-weight: bold; -fx-font-size: 16;" />
                 <Circle fx:id="kitchenIndicator" radius="5" fill="#95a5a6" />
             </HBox>
-            <Label fx:id="currentKitchenOrder" style="-fx-font-size: 20; -fx-font-weight: bold;" text="Нет заказа" />
+            <Label fx:id="currentKitchenOrder" style="-fx-font-size: 20; -fx-font-weight: bold;"/>
             <Label fx:id="kitchenQueueCount" style="-fx-font-size: 24; -fx-font-weight: bold;" />
             <ScrollPane prefHeight="200" fitToWidth="true">
                 <VBox fx:id="kitchenQueueBox" spacing="5" />
