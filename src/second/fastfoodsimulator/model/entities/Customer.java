@@ -5,6 +5,7 @@ public class Customer {
     private Integer orderId; // Может быть null пока заказ не оформлен
     private CustomerState state;
     private long arrivalTime;
+    private long orderStartTime = 0;
 
     public enum CustomerState {
         WAITING_ORDER,
@@ -42,4 +43,21 @@ public class Customer {
     public long getArrivalTime() {
         return arrivalTime;
     }
+
+    public long getOrderStartTime() {
+        return orderStartTime;
+    }
+
+    public void setOrderStartTime(long orderStartTime) {
+        this.orderStartTime = orderStartTime;
+    }
+
+    public boolean hasOrderStartTime() {
+        return orderStartTime > 0;
+    }
+
+    public long getWaitTime() {
+        return System.currentTimeMillis() - orderStartTime;
+    }
+
 }

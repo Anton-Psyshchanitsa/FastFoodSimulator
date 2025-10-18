@@ -1,5 +1,6 @@
 package second.fastfoodsimulator.model.simulation;
 
+import second.fastfoodsimulator.model.entities.Customer;
 import second.fastfoodsimulator.model.entities.Order;
 import second.fastfoodsimulator.model.entities.Server;
 import second.fastfoodsimulator.model.queues.ServingQueue;
@@ -59,23 +60,39 @@ public class ServerSimulation {
                     System.out.println("Сервер начинает выдавать заказ #" + orderId);
                 });
 
-                // Имитация выдачи заказа
                 executor.schedule(() -> {
                     server.completeServing();
                     order.setState(Order.OrderState.COMPLETED);
 
-                    // УДАЛЯЕМ КЛИЕНТА ИЗ SERVING LINE ПО orderId
+                    // ВЫЧИСЛЯЕМ ВРЕМЯ ОЖИДАНИЯ
+                    long waitTime = calculateWaitTime(orderId);
+
+                    // УДАЛЯЕМ КЛИЕНТА ИЗ SERVING LINE
                     servingLine.removeCustomerByOrderId(orderId);
 
                     Platform.runLater(() -> {
                         controller.updateServerStatus(-1);
-                        controller.updateWaitingCustomers(servingLine.getWaitingCustomerCount()); // ОБНОВЛЯЕМ СЧЕТЧИК
-                        controller.completeOrder(orderId);
-                        System.out.println("Заказ #" + orderId + " выдан клиенту");
+                        controller.updateWaitingCustomers(servingLine.getWaitingCustomerCount());
+
+                        // ПЕРЕДАЕМ ВРЕМЯ ОЖИДАНИЯ В СТАТИСТИКУ
+                        controller.completeOrder(orderId, waitTime);
+
+                        System.out.println("Заказ #" + orderId + " выдан клиенту. Время ожидания: " + waitTime + "мс");
                     });
                 }, 800, TimeUnit.MILLISECONDS);
             }
         }
+    }
+
+    // ДОБАВЛЯЕМ МЕТОД ДЛЯ ВЫЧИСЛЕНИЯ ВРЕМЕНИ ОЖИДАНИЯ
+    private long calculateWaitTime(int orderId) {
+        Customer customer = servingLine.getCustomerByOrderId(orderId);
+        if (customer != null && customer.getOrderStartTime() > 0) {
+            long waitTime = System.currentTimeMillis() - customer.getOrderStartTime();
+            System.out.println("Время ожидания для заказа #" + orderId + ": " + waitTime + "мс");
+            return waitTime;
+        }
+        return 0; // Если время не удалось вычислить
     }
 
     // ДОБАВЛЯЕМ МЕТОД ДЛЯ СБРОСА СОСТОЯНИЯ

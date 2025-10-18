@@ -158,7 +158,6 @@ public class SimulationManager {
         if (!isRunning.get() || orderTaker.isBusy()) return;
 
         try {
-            // Получаем следующего клиента
             Customer customer = controller.getNextCustomer();
             if (customer == null) return;
 
@@ -167,14 +166,18 @@ public class SimulationManager {
                 Order order = new Order(orderId);
                 kitchenQueue.addOrder(order);
 
-                // ДОБАВЛЯЕМ КЛИЕНТА В SERVING LINE
                 servingLine.addCustomer(customer, orderId);
+
+                // ЗАПОМИНАЕМ ВРЕМЯ НАЧАЛА ОЖИДАНИЯ
+                customer.setOrderStartTime(System.currentTimeMillis());
 
                 Platform.runLater(() -> {
                     controller.removeCustomerFromQueue(customer.getCustomerId());
                     controller.updateOrderTakerStatus(orderId);
                     controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
                     controller.updateWaitingCustomers(servingLine.getWaitingCustomerCount());
+                    // УВЕДОМЛЯЕМ О СОЗДАНИИ ЗАКАЗА
+                    controller.orderCreated(orderId);
                     System.out.println("Заказ #" + orderId + " оформлен для клиента #" + customer.getCustomerId());
                 });
 
@@ -185,7 +188,6 @@ public class SimulationManager {
                     });
                 }, 500, TimeUnit.MILLISECONDS);
             } else {
-                // Если не удалось оформить заказ, возвращаем клиента
                 controller.returnCustomerToQueue(customer);
             }
         } catch (Exception e) {

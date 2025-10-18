@@ -22,10 +22,6 @@ public class ServingLine {
         orderIdToCustomerMap.put(orderId, customer);
     }
 
-    public synchronized Customer getCustomerByOrderId(int orderId) {
-        return orderIdToCustomerMap.get(orderId);
-    }
-
     // ДОБАВЛЯЕМ МЕТОД ДЛЯ УДАЛЕНИЯ КЛИЕНТА ПО orderId
     public synchronized Customer removeCustomerByOrderId(int orderId) {
         Customer customer = orderIdToCustomerMap.remove(orderId);
@@ -57,4 +53,9 @@ public class ServingLine {
         waitingCustomers.clear();
         orderIdToCustomerMap.clear();
     }
+
+    public synchronized Customer getCustomerByOrderId(int orderId) {
+        return orderIdToCustomerMap.get(orderId);
+    }
+
 }

@@ -13,6 +13,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import second.fastfoodsimulator.model.StatisticsManager;
 import second.fastfoodsimulator.model.entities.Customer;
 import second.fastfoodsimulator.model.simulation.SimulationManager;
 
@@ -46,6 +47,14 @@ public class MainController {
     @FXML
     private Label waitingCustomersCount;
 
+    // Добавляем новые поля для статистики
+    @FXML private Label totalCustomersLabel;
+    @FXML private Label totalOrdersLabel;
+    @FXML private Label avgWaitTimeLabel;
+    @FXML private Label maxCustomerQueueLabel;
+    @FXML private Label maxKitchenQueueLabel;
+    @FXML private Label currentSpeedLabel;
+
     @FXML
     private VBox waitingCustomersBox;
 
@@ -74,6 +83,7 @@ public class MainController {
     private final SimulationManager simulationManager;
     private final List<Customer> customerQueue = new ArrayList<>();
     private final List<Label> customerLabels = new ArrayList<>();
+    private final StatisticsManager statisticsManager = new StatisticsManager();
 
     private Animation orderTakerPulseAnimation;
     private Animation customerPulseAnimation;
@@ -115,6 +125,9 @@ public class MainController {
     @FXML
     private void startSimulation() {
         try {
+
+            statisticsManager.startSimulation();
+
             int customerInterval = Integer.parseInt(customerIntervalField.getText());
             int orderInterval = Integer.parseInt(orderIntervalField.getText());
             int cookingInterval = Integer.parseInt(cookingIntervalField.getText());
@@ -129,6 +142,8 @@ public class MainController {
             servingIntervalField.setDisable(true);
             startButton.setDisable(true);
             stopButton.setDisable(false);
+
+            updateStatistics();
 
         } catch (NumberFormatException e) {
             showError("Неверный формат ввода. Введите целые числа");
@@ -150,6 +165,8 @@ public class MainController {
         stopButton.setDisable(true);
 
         resetUI();
+
+        updateStatistics();
     }
 
     private void resetUI() {
@@ -176,6 +193,9 @@ public class MainController {
 
         // Останавливаем анимации
         stopAllAnimations();
+
+        statisticsManager.reset();
+        updateStatistics();
 
         System.out.println("UI полностью сброшен");
     }
@@ -217,7 +237,10 @@ public class MainController {
     }
 
     public void addCustomerToQueue(Customer customer) {
-        System.out.println("Добавление клиента #" + customer.getCustomerId()); // Используем getCustomerId()
+        System.out.println("Добавление клиента #" + customer.getCustomerId());
+
+        // СБОР СТАТИСТИКИ
+        statisticsManager.customerArrived();
 
         synchronized (customerQueue) {
             customerQueue.add(customer);
@@ -225,6 +248,7 @@ public class MainController {
 
         Platform.runLater(() -> {
             updateCustomerQueueCount(customerQueue.size());
+            updateStatistics(); // ОБНОВЛЯЕМ СТАТИСТИКУ
 
             Label customerLabel = new Label("Клиент #" + customer.getCustomerId()); // Используем getCustomerId()
             customerLabel.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-padding: 5; -fx-background-radius: 5;");
@@ -247,8 +271,9 @@ public class MainController {
         });
     }
 
-    public void removeCustomerFromQueue(int customerId) { // Меняем параметр на customerId
-        System.out.println("Удаление клиента #" + customerId);
+    public void removeCustomerFromQueue(int customerId) {
+        // СБОР СТАТИСТИКИ
+        statisticsManager.customerServed();
 
         synchronized (customerQueue) {
             customerQueue.removeIf(customer -> customer.getCustomerId() == customerId);
@@ -256,6 +281,7 @@ public class MainController {
 
         Platform.runLater(() -> {
             updateCustomerQueueCount(customerQueue.size());
+            updateStatistics(); // ОБНОВЛЯЕМ СТАТИСТИКУ
 
             customerLabels.removeIf(label -> label.getText().contains("Клиент #" + customerId));
             customerQueueBox.getChildren().removeIf(node ->
@@ -267,6 +293,14 @@ public class MainController {
     }
 
     public void updateCustomerQueueCount(int count) {
+
+        statisticsManager.updateCustomerQueue(count);
+
+        Platform.runLater(() -> {
+            customerQueueCount.setText(String.valueOf(count));
+            updateStatistics();
+        });
+
         System.out.println("Обновление счетчика клиентов: " + count);
         customerQueueCount.setText(String.valueOf(count));
     }
@@ -368,9 +402,12 @@ public class MainController {
     public void updateKitchenQueue(int count) {
         System.out.println("Обновление кухни: " + count);
 
+        statisticsManager.updateKitchenQueue(count);
+
         Platform.runLater(() -> {
             kitchenQueueBox.getChildren().clear();
             kitchenQueueCount.setText(String.valueOf(count));
+            updateStatistics(); // ОБНОВЛЯЕМ СТАТИСТИКУ
 
             if (count > 0) {
                 // Получаем реальные ID заказов из кухонной очереди
@@ -574,11 +611,35 @@ public class MainController {
         });
     }
 
-    public void completeOrder(int orderId) {
+    public void updateStatistics() {
         Platform.runLater(() -> {
-            System.out.println("Заказ #" + orderId + " завершен. Клиент покидает ресторан.");
-            // Автоматически обновляем список через updateWaitingCustomers
+            totalCustomersLabel.setText(String.valueOf(statisticsManager.getTotalCustomers()));
+            totalOrdersLabel.setText(String.valueOf(statisticsManager.getTotalOrders()));
+            avgWaitTimeLabel.setText(statisticsManager.getAverageWaitTime() + " мс");
+            maxCustomerQueueLabel.setText(String.valueOf(statisticsManager.getMaxCustomerQueue()));
+            maxKitchenQueueLabel.setText(String.valueOf(statisticsManager.getMaxKitchenQueue()));
+            currentSpeedLabel.setText(String.format("%.1f зак/мин", statisticsManager.getCurrentSpeed()));
         });
+    }
+
+    // ОБНОВЛЯЕМ МЕТОД completeOrder ДЛЯ УЧЕТА ВРЕМЕНИ ОЖИДАНИЯ
+    public void completeOrder(int orderId, long waitTime) {
+        // СБОР СТАТИСТИКИ - ЗАКАЗ ЗАВЕРШЕН С УЧЕТОМ ВРЕМЕНИ
+        statisticsManager.orderCompleted(waitTime);
+
+        Platform.runLater(() -> {
+            System.out.println("Заказ #" + orderId + " завершен. Время ожидания: " + waitTime + "мс");
+            updateStatistics();
+        });
+    }
+
+    // ДОБАВЛЯЕМ МЕТОД ДЛЯ УЧЕТА СОЗДАННЫХ ЗАКАЗОВ
+    public void orderCreated(int orderId) {
+        // СБОР СТАТИСТИКИ - ЗАКАЗ СОЗДАН
+        statisticsManager.orderCreated();
+        System.out.println("Статистика: заказ #" + orderId + " создан");
+
+        updateStatistics();
     }
 
     private void initializeAnimations() {
