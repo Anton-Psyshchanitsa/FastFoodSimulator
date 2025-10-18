@@ -13,11 +13,18 @@ public class MainApp extends Application {
     public void start(Stage primaryStage) throws Exception {
         FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("/second/fastfoodsimulator/view/MainView.fxml"));
         Parent root = loader.load();
-        Scene scene = new Scene(root, 800, 600);
+        Scene scene = new Scene(root);
         scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles/application.css")).toExternalForm());
 
         primaryStage.setTitle("Fast Food Simulator");
         primaryStage.setScene(scene);
+
+        // УСТАНАВЛИВАЕМ ПОЛНОЭКРАННЫЙ РЕЖИМ
+        primaryStage.setMaximized(true);
+        primaryStage.setFullScreen(false); // Можно использовать true для настоящего fullscreen
+        primaryStage.setMinWidth(1200);
+        primaryStage.setMinHeight(800);
+
         primaryStage.show();
     }
 

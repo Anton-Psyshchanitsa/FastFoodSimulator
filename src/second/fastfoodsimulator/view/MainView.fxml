@@ -7,91 +7,175 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.shape.Circle?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.control.Separator?>
 <VBox xmlns="http://javafx.com/javafx/24"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="second.fastfoodsimulator.view.controllers.MainController"
-      style="-fx-background-color: #f5f5f5; -fx-padding: 20; -fx-spacing: 20;">
+      style="-fx-background-color: #2c3e50; -fx-padding: 25; -fx-spacing: 30;"
+      prefWidth="1600" prefHeight="900">
 
-    <!-- Добавляем новые поля ввода в MainView.fxml -->
-    <HBox spacing="15" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10;">
-        <VBox spacing="10">
-            <Label text="Интервал прихода клиентов (мс):" style="-fx-font-weight: bold;" />
-            <TextField fx:id="customerIntervalField" prefWidth="150" text="1000" />
+    <!-- Заголовок приложения -->
+    <Label text="Fast Food Simulator"
+           style="-fx-text-fill: white; -fx-font-size: 32px; -fx-font-weight: bold; -fx-alignment: center;"
+           VBox.vgrow="NEVER"/>
+
+    <!-- Панель управления -->
+    <HBox spacing="25" style="-fx-background-color: #34495e; -fx-padding: 20; -fx-background-radius: 15;"
+          VBox.vgrow="NEVER">
+        <VBox spacing="8">
+            <Label text="Интервал прихода клиентов (мс):" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold; -fx-font-size: 14;" />
+            <TextField fx:id="customerIntervalField" prefWidth="180" prefHeight="35"
+                       style="-fx-font-size: 14; -fx-background-radius: 8;" text="1000" />
         </VBox>
-        <VBox spacing="10">
-            <Label text="Интервал приема заказов (мс):" style="-fx-font-weight: bold;" />
-            <TextField fx:id="orderIntervalField" prefWidth="150" text="1500" />
+        <VBox spacing="8">
+            <Label text="Интервал приема заказов (мс):" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold; -fx-font-size: 14;" />
+            <TextField fx:id="orderIntervalField" prefWidth="180" prefHeight="35"
+                       style="-fx-font-size: 14; -fx-background-radius: 8;" text="1500" />
         </VBox>
-        <VBox spacing="10">
-            <Label text="Интервал приготовления (мс):" style="-fx-font-weight: bold;" />
-            <TextField fx:id="cookingIntervalField" prefWidth="150" text="2000" />
+        <VBox spacing="8">
+            <Label text="Интервал приготовления (мс):" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold; -fx-font-size: 14;" />
+            <TextField fx:id="cookingIntervalField" prefWidth="180" prefHeight="35"
+                       style="-fx-font-size: 14; -fx-background-radius: 8;" text="2000" />
         </VBox>
-        <VBox spacing="10">
-            <Label text="Интервал выдачи (мс):" style="-fx-font-weight: bold;" />
-            <TextField fx:id="servingIntervalField" prefWidth="150" text="1000" />
+        <VBox spacing="8">
+            <Label text="Интервал выдачи (мс):" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold; -fx-font-size: 14;" />
+            <TextField fx:id="servingIntervalField" prefWidth="180" prefHeight="35"
+                       style="-fx-font-size: 14; -fx-background-radius: 8;" text="1000" />
         </VBox>
-        <Button fx:id="startButton" text="Старт" style="-fx-background-color: #2ecc71; -fx-text-fill: white;" />
-        <Button fx:id="stopButton" text="Стоп" style="-fx-background-color: #e74c3c; -fx-text-fill: white;" disable="true" />
+
+        <VBox spacing="8" alignment="CENTER">
+            <Button fx:id="startButton" text="СТАРТ"
+                    style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16; -fx-pref-width: 120; -fx-pref-height: 45; -fx-background-radius: 10;" />
+            <Button fx:id="stopButton" text="СТОП"
+                    style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16; -fx-pref-width: 120; -fx-pref-height: 45; -fx-background-radius: 10;"
+                    disable="true" />
+        </VBox>
     </HBox>
 
-    <!-- Панели симуляции -->
-    <GridPane hgap="20" vgap="15">
+    <!-- Основная панель симуляции -->
+    <GridPane hgap="25" vgap="25" VBox.vgrow="ALWAYS">
+        <!-- Настройка колонок для равномерного распределения -->
+        <columnConstraints>
+            <ColumnConstraints percentWidth="23" />
+            <ColumnConstraints percentWidth="18" />
+            <ColumnConstraints percentWidth="23" />
+            <ColumnConstraints percentWidth="31" />
+        </columnConstraints>
+
+        <!-- Настройка строк -->
+        <rowConstraints>
+            <RowConstraints percentHeight="100" />
+        </rowConstraints>
+
         <!-- Очередь клиентов -->
-        <VBox GridPane.columnIndex="0" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10;">
-            <HBox spacing="10">
-                <Label text="Очередь клиентов" style="-fx-font-weight: bold; -fx-font-size: 16;" />
-                <Circle fx:id="customerIndicator" radius="5" fill="#3498db" />
+        <VBox GridPane.columnIndex="0" style="-fx-background-color: #34495e; -fx-padding: 20; -fx-background-radius: 15;"
+              spacing="15">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="🎯 Очередь клиентов" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold; -fx-font-size: 18;" />
+                <Circle fx:id="customerIndicator" radius="8" fill="#3498db" />
             </HBox>
-            <Label fx:id="customerQueueCount" style="-fx-font-size: 24; -fx-font-weight: bold;" />
-            <ScrollPane prefHeight="200" fitToWidth="true">
-                <VBox fx:id="customerQueueBox" spacing="5" />
-            </ScrollPane>
+
+            <VBox spacing="10" alignment="CENTER">
+                <Label text="Количество:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
+                <Label fx:id="customerQueueCount" style="-fx-text-fill: #3498db; -fx-font-size: 36; -fx-font-weight: bold;" text="0" />
+            </VBox>
+
+            <VBox spacing="8">
+                <Label text="Список клиентов:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
+                <ScrollPane prefHeight="300" fitToWidth="true"
+                            style="-fx-background-color: transparent; -fx-border-color: #2c3e50; -fx-border-radius: 8;">
+                    <VBox fx:id="customerQueueBox" spacing="8" />
+                </ScrollPane>
+            </VBox>
         </VBox>
 
         <!-- Кассир -->
-        <VBox GridPane.columnIndex="1" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10;">
-            <HBox spacing="10">
-                <Label text="Кассир" style="-fx-font-weight: bold; -fx-font-size: 16;" />
-                <Circle fx:id="orderTakerIndicator" radius="5" fill="#95a5a6" />
+        <VBox GridPane.columnIndex="1" style="-fx-background-color: #34495e; -fx-padding: 20; -fx-background-radius: 15;"
+              spacing="20" alignment="CENTER">
+            <HBox spacing="10" alignment="CENTER">
+                <Label text="💁 Кассир" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold; -fx-font-size: 18;" />
+                <Circle fx:id="orderTakerIndicator" radius="8" fill="#95a5a6" />
             </HBox>
-            <Label fx:id="currentOrderTaker" style="-fx-font-size: 20; -fx-font-weight: bold;" text="Нет заказа" />
+
+            <VBox spacing="15" alignment="CENTER" prefWidth="200">
+                <Label text="Текущий заказ:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
+                <Label fx:id="currentOrderTaker" style="-fx-text-fill: #2ecc71; -fx-font-size: 24; -fx-font-weight: bold; -fx-wrap-text: true; -fx-text-alignment: center;"
+                       text="Нет заказа" />
+            </VBox>
         </VBox>
 
         <!-- Кухня -->
-        <VBox GridPane.columnIndex="2" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10;">
-            <HBox spacing="10">
-                <Label text="Кухня" style="-fx-font-weight: bold; -fx-font-size: 16;" />
-                <Circle fx:id="kitchenIndicator" radius="5" fill="#95a5a6" />
-                <Circle fx:id="cookIndicator" radius="5" fill="#95a5a6" /> <!-- ДОБАВЬТЕ ЭТОТ ЭЛЕМЕНТ -->
+        <VBox GridPane.columnIndex="2" style="-fx-background-color: #34495e; -fx-padding: 20; -fx-background-radius: 15;"
+              spacing="15">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="👨‍🍳 Кухня" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold; -fx-font-size: 18;" />
+                <Circle fx:id="kitchenIndicator" radius="8" fill="#95a5a6" />
+                <Circle fx:id="cookIndicator" radius="8" fill="#95a5a6" />
             </HBox>
-            <Label fx:id="currentKitchenOrder" style="-fx-font-size: 20; -fx-font-weight: bold;" text="Нет заказа" />
-            <Label fx:id="kitchenQueueCount" style="-fx-font-size: 24; -fx-font-weight: bold;" />
-            <ScrollPane prefHeight="200" fitToWidth="true">
-                <VBox fx:id="kitchenQueueBox" spacing="5" />
-            </ScrollPane>
+
+            <VBox spacing="10" alignment="CENTER">
+                <Label text="Текущий заказ:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
+                <Label fx:id="currentKitchenOrder" style="-fx-text-fill: #e74c3c; -fx-font-size: 20; -fx-font-weight: bold; -fx-wrap-text: true;"
+                       text="Нет заказа" />
+            </VBox>
+
+            <VBox spacing="10" alignment="CENTER">
+                <Label text="Очередь заказов:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
+                <Label fx:id="kitchenQueueCount" style="-fx-text-fill: #e74c3c; -fx-font-size: 36; -fx-font-weight: bold;" text="0" />
+            </VBox>
+
+            <VBox spacing="8">
+                <Label text="Список заказов:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
+                <ScrollPane prefHeight="200" fitToWidth="true"
+                            style="-fx-background-color: transparent; -fx-border-color: #2c3e50; -fx-border-radius: 8;">
+                    <VBox fx:id="kitchenQueueBox" spacing="6" />
+                </ScrollPane>
+            </VBox>
         </VBox>
 
         <!-- Зона выдачи -->
-        <VBox GridPane.columnIndex="3" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10;">
-            <HBox spacing="30">
-                <Label text="Зона выдачи" style="-fx-font-weight: bold; -fx-font-size: 16;" />
-                <Circle fx:id="serverIndicator" radius="5" fill="#95a5a6" />
+        <VBox GridPane.columnIndex="3" style="-fx-background-color: #34495e; -fx-padding: 20; -fx-background-radius: 15;"
+              spacing="15">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="🚚 Зона выдачи" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold; -fx-font-size: 18;" />
+                <Circle fx:id="serverIndicator" radius="8" fill="#95a5a6" />
             </HBox>
-            <Label fx:id="currentPickupOrder" style="-fx-font-size: 20; -fx-font-weight: bold;" text="Нет заказа" />
+
+            <VBox spacing="10" alignment="CENTER">
+                <Label text="Текущий заказ:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
+                <Label fx:id="currentPickupOrder" style="-fx-text-fill: #f39c12; -fx-font-size: 20; -fx-font-weight: bold; -fx-wrap-text: true;"
+                       text="Нет заказа" />
+            </VBox>
 
             <!-- Готовые заказы -->
-            <Label text="Готовые заказы:" style="-fx-font-weight: bold;" />
-            <Label fx:id="servingQueueCount" style="-fx-font-size: 18; -fx-font-weight: bold;" text="0" />
-            <ScrollPane prefHeight="100" fitToWidth="true">
-                <VBox fx:id="servingQueueBox" spacing="5" />
-            </ScrollPane>
+            <VBox spacing="8">
+                <Label text="📦 Готовые заказы:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="Количество:" style="-fx-text-fill: #bdc3c7;" />
+                    <Label fx:id="servingQueueCount" style="-fx-text-fill: #2ecc71; -fx-font-size: 20; -fx-font-weight: bold;" text="0" />
+                </HBox>
+                <ScrollPane prefHeight="120" fitToWidth="true"
+                            style="-fx-background-color: transparent; -fx-border-color: #2c3e50; -fx-border-radius: 8;">
+                    <VBox fx:id="servingQueueBox" spacing="5" />
+                </ScrollPane>
+            </VBox>
+
+            <Separator style="-fx-background-color: #2c3e50;" />
 
             <!-- Клиенты, ожидающие заказы -->
-            <Label text="Клиенты ждут заказы:" style="-fx-font-weight: bold;" />
-            <Label fx:id="waitingCustomersCount" style="-fx-font-size: 18; -fx-font-weight: bold;" text="0" />
-            <ScrollPane prefHeight="100" fitToWidth="true">
-                <VBox fx:id="waitingCustomersBox" spacing="5" />
-            </ScrollPane>
+            <VBox spacing="8">
+                <Label text="👥 Клиенты ждут заказы:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="Количество:" style="-fx-text-fill: #bdc3c7;" />
+                    <Label fx:id="waitingCustomersCount" style="-fx-text-fill: #9b59b6; -fx-font-size: 20; -fx-font-weight: bold;" text="0" />
+                </HBox>
+                <ScrollPane prefHeight="120" fitToWidth="true"
+                            style="-fx-background-color: transparent; -fx-border-color: #2c3e50; -fx-border-radius: 8;">
+                    <VBox fx:id="waitingCustomersBox" spacing="5" />
+                </ScrollPane>
+            </VBox>
         </VBox>
     </GridPane>
 </VBox>
