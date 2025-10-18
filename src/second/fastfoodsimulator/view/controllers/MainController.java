@@ -296,9 +296,12 @@ public class MainController {
             kitchenQueueCount.setText(String.valueOf(count));
 
             if (count > 0) {
-                for (int i = 0; i < count; i++) {
-                    final int orderNum = i + 1;
-                    Label orderLabel = new Label("Заказ #" + orderNum);
+                // Получаем реальные ID заказов из кухонной очереди
+                List<Integer> orderIds = simulationManager.getKitchenQueue().getOrderIds();
+
+                for (int i = 0; i < orderIds.size(); i++) {
+                    int orderId = orderIds.get(i);
+                    Label orderLabel = new Label("Заказ #" + orderId);
                     orderLabel.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-padding: 5; -fx-background-radius: 5;");
 
                     FadeTransition fadeIn = new FadeTransition(Duration.millis(300), orderLabel);
@@ -386,9 +389,12 @@ public class MainController {
             servingLineCount.setText(String.valueOf(count));
 
             if (count > 0) {
-                for (int i = 0; i < count; i++) {
-                    final int orderNum = i + 1;
-                    Label orderLabel = new Label("Заказ #" + orderNum);
+                // Получаем реальные ID заказов из очереди выдачи
+                List<Integer> orderIds = simulationManager.getServingQueue().getReadyOrderIds();
+
+                for (int i = 0; i < orderIds.size(); i++) {
+                    int orderId = orderIds.get(i);
+                    Label orderLabel = new Label("Заказ #" + orderId);
                     orderLabel.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-padding: 5; -fx-background-radius: 5;");
 
                     FadeTransition fadeIn = new FadeTransition(Duration.millis(300), orderLabel);

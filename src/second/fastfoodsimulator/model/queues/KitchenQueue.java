@@ -28,9 +28,17 @@ public class KitchenQueue {
         return orders.isEmpty();
     }
 
-    // Добавляем метод для получения всех заказов
+    // Метод для получения всех заказов с реальными ID
     public synchronized List<Order> getAllOrders() {
         return new ArrayList<>(orders);
     }
-}
 
+    // Метод для получения списка ID заказов
+    public synchronized List<Integer> getOrderIds() {
+        List<Integer> orderIds = new ArrayList<>();
+        for (Order order : orders) {
+            orderIds.add(order.getOrderId());
+        }
+        return orderIds;
+    }
+}

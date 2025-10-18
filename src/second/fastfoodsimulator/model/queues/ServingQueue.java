@@ -2,6 +2,8 @@ package second.fastfoodsimulator.model.queues;
 
 import second.fastfoodsimulator.model.entities.Order;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.List;
+import java.util.ArrayList;
 
 public class ServingQueue {
     private final ConcurrentLinkedQueue<Order> readyOrders;
@@ -25,5 +27,19 @@ public class ServingQueue {
 
     public synchronized boolean isEmpty() {
         return readyOrders.isEmpty();
+    }
+
+    // Метод для получения всех готовых заказов
+    public synchronized List<Order> getAllReadyOrders() {
+        return new ArrayList<>(readyOrders);
+    }
+
+    // Метод для получения списка ID готовых заказов
+    public synchronized List<Integer> getReadyOrderIds() {
+        List<Integer> orderIds = new ArrayList<>();
+        for (Order order : readyOrders) {
+            orderIds.add(order.getOrderId());
+        }
+        return orderIds;
     }
 }
