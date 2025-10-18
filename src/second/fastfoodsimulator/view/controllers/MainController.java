@@ -41,7 +41,13 @@ public class MainController {
     @FXML
     private Label currentPickupOrder;
     @FXML
-    private Label servingLineCount;
+    private Label servingQueueCount;
+
+    @FXML
+    private Label waitingCustomersCount;
+
+    @FXML
+    private VBox waitingCustomersBox;
 
     @FXML
     private VBox customerQueueBox;
@@ -112,7 +118,7 @@ public class MainController {
         currentKitchenOrder.setText("Нет заказа");
         kitchenQueueCount.setText("0");
         currentPickupOrder.setText("Нет заказа");
-        servingLineCount.setText("0");
+        servingQueueCount.setText("0");
 
         customerQueue.clear();
         customerLabels.clear();
@@ -204,9 +210,8 @@ public class MainController {
     }
 
     public void addCustomerToQueue(Customer customer) {
-        System.out.println("Добавление клиента #" + customer.getOrderId());
+        System.out.println("Добавление клиента #" + customer.getCustomerId()); // Используем getCustomerId()
 
-        // ДОБАВЛЯЕМ КЛИЕНТА В ОЧЕРЕДЬ
         synchronized (customerQueue) {
             customerQueue.add(customer);
         }
@@ -214,7 +219,7 @@ public class MainController {
         Platform.runLater(() -> {
             updateCustomerQueueCount(customerQueue.size());
 
-            Label customerLabel = new Label("Клиент #" + customer.getOrderId());
+            Label customerLabel = new Label("Клиент #" + customer.getCustomerId()); // Используем getCustomerId()
             customerLabel.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-padding: 5; -fx-background-radius: 5;");
 
             FadeTransition fadeIn = new FadeTransition(Duration.millis(500), customerLabel);
@@ -231,25 +236,23 @@ public class MainController {
             customerLabels.add(customerLabel);
 
             parallelTransition.play();
-
             updateCustomerIndicator();
         });
     }
 
-    public void removeCustomerFromQueue(int orderId) {
-        System.out.println("Удаление клиента #" + orderId);
+    public void removeCustomerFromQueue(int customerId) { // Меняем параметр на customerId
+        System.out.println("Удаление клиента #" + customerId);
 
-        // УДАЛЯЕМ КЛИЕНТА ИЗ ОЧЕРЕДИ
         synchronized (customerQueue) {
-            customerQueue.removeIf(customer -> customer.getOrderId() == orderId);
+            customerQueue.removeIf(customer -> customer.getCustomerId() == customerId);
         }
 
         Platform.runLater(() -> {
             updateCustomerQueueCount(customerQueue.size());
 
-            customerLabels.removeIf(label -> label.getText().contains("Клиент #" + orderId));
+            customerLabels.removeIf(label -> label.getText().contains("Клиент #" + customerId));
             customerQueueBox.getChildren().removeIf(node ->
-                    node instanceof Label && ((Label) node).getText().contains("Клиент #" + orderId)
+                    node instanceof Label && ((Label) node).getText().contains("Клиент #" + customerId)
             );
 
             updateCustomerIndicator();
@@ -259,6 +262,39 @@ public class MainController {
     public void updateCustomerQueueCount(int count) {
         System.out.println("Обновление счетчика клиентов: " + count);
         customerQueueCount.setText(String.valueOf(count));
+    }
+
+    public void updateWaitingCustomers(int count) {
+        Platform.runLater(() -> {
+            waitingCustomersCount.setText(String.valueOf(count));
+            updateWaitingCustomersList();
+        });
+    }
+
+    private void updateWaitingCustomersList() {
+        Platform.runLater(() -> {
+            waitingCustomersBox.getChildren().clear();
+
+            List<Customer> waitingCustomers = simulationManager.getServingLine().getAllWaitingCustomers();
+
+            if (waitingCustomers.isEmpty()) {
+                Label emptyLabel = new Label("Нет клиентов");
+                emptyLabel.setStyle("-fx-text-fill: #95a5a6; -fx-font-style: italic;");
+                waitingCustomersBox.getChildren().add(emptyLabel);
+            } else {
+                for (Customer customer : waitingCustomers) {
+                    Label customerLabel = new Label("Клиент #" + customer.getCustomerId() + " (Заказ #" + customer.getOrderId() + ")");
+                    customerLabel.setStyle("-fx-background-color: #9b59b6; -fx-text-fill: white; -fx-padding: 5; -fx-background-radius: 5;");
+
+                    FadeTransition fadeIn = new FadeTransition(Duration.millis(300), customerLabel);
+                    fadeIn.setFromValue(0.0);
+                    fadeIn.setToValue(1.0);
+
+                    waitingCustomersBox.getChildren().add(customerLabel);
+                    fadeIn.play();
+                }
+            }
+        });
     }
 
     public void updateOrderTakerStatus(int orderId) {
@@ -301,7 +337,6 @@ public class MainController {
         }
     }
 
-    // ДОБАВЛЯЕМ МЕТОД ДЛЯ ПОЛУЧЕНИЯ СЛЕДУЮЩЕГО КЛИЕНТА
     public Customer getNextCustomer() {
         synchronized (customerQueue) {
             if (customerQueue.isEmpty()) {
@@ -310,6 +345,18 @@ public class MainController {
             return customerQueue.remove(0);
         }
     }
+
+    public void returnCustomerToQueue(Customer customer) {
+        synchronized (customerQueue) {
+            customerQueue.add(0, customer); // Возвращаем в начало очереди
+        }
+        Platform.runLater(() -> {
+            updateCustomerQueueCount(customerQueue.size());
+            // Можно добавить анимацию или сообщение
+            System.out.println("Клиент #" + customer.getCustomerId() + " возвращен в очередь");
+        });
+    }
+
 
     public void updateKitchenQueue(int count) {
         System.out.println("Обновление кухни: " + count);
@@ -409,7 +456,7 @@ public class MainController {
 
         Platform.runLater(() -> {
             servingQueueBox.getChildren().clear();
-            servingLineCount.setText(String.valueOf(count));
+            servingQueueCount.setText(String.valueOf(count));
 
             if (count > 0) {
                 // Получаем реальные ID заказов из очереди выдачи

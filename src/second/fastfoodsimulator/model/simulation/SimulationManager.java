@@ -1,10 +1,8 @@
 package second.fastfoodsimulator.model.simulation;
 
-import javafx.scene.control.Alert;
-import javafx.scene.image.Image;
-import javafx.stage.Stage;
 import second.fastfoodsimulator.model.entities.*;
 import second.fastfoodsimulator.model.queues.KitchenQueue;
+import second.fastfoodsimulator.model.queues.ServingLine;
 import second.fastfoodsimulator.model.queues.ServingQueue;
 import second.fastfoodsimulator.view.controllers.MainController;
 import javafx.application.Platform;
@@ -17,6 +15,7 @@ public class SimulationManager {
     private final OrderTaker orderTaker;
     private final KitchenQueue kitchenQueue;
     private final ServingQueue servingQueue;
+    private final ServingLine servingLine; // ДОБАВЛЯЕМ
     private final ScheduledExecutorService executor;
     private final CookSimulation cookSimulation;
     private final ServerSimulation serverSimulation;
@@ -29,6 +28,7 @@ public class SimulationManager {
         this.orderTaker = new OrderTaker();
         this.kitchenQueue = new KitchenQueue();
         this.servingQueue = new ServingQueue();
+        this.servingLine = new ServingLine();
         this.executor = Executors.newScheduledThreadPool(4);
         this.cookSimulation = new CookSimulation(controller, kitchenQueue, servingQueue);
         this.serverSimulation = new ServerSimulation(controller, servingQueue);
@@ -59,6 +59,50 @@ public class SimulationManager {
             Platform.runLater(() -> controller.showError("Ошибка запуска симуляции: " + e.getMessage()));
             stopSimulation();
         }
+    }
+
+    private void processOrder() {
+        if (!isRunning.get() || orderTaker.isBusy()) return;
+
+        try {
+            // Получаем следующего клиента
+            Customer customer = controller.getNextCustomer();
+            if (customer == null) return;
+
+            int orderId = orderTaker.takeOrder();
+            if (orderId != -1) {
+                Order order = new Order(orderId);
+                kitchenQueue.addOrder(order);
+
+                // ДОБАВЛЯЕМ КЛИЕНТА В SERVING LINE
+                servingLine.addCustomer(customer, orderId);
+
+                Platform.runLater(() -> {
+                    controller.removeCustomerFromQueue(customer.getCustomerId());
+                    controller.updateOrderTakerStatus(orderId);
+                    controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
+                    controller.updateWaitingCustomers(servingLine.getWaitingCustomerCount());
+                    System.out.println("Заказ #" + orderId + " оформлен для клиента #" + customer.getCustomerId());
+                });
+
+                executor.schedule(() -> {
+                    orderTaker.completeOrder();
+                    Platform.runLater(() -> {
+                        controller.updateOrderTakerStatus(-1);
+                    });
+                }, 500, TimeUnit.MILLISECONDS);
+            } else {
+                // Если не удалось оформить заказ, возвращаем клиента
+                controller.returnCustomerToQueue(customer);
+            }
+        } catch (Exception e) {
+            System.err.println("Ошибка при обработке заказа: " + e.getMessage());
+            orderTaker.completeOrder();
+        }
+    }
+
+    public ServingLine getServingLine() {
+        return servingLine;
     }
 
     public void stopSimulation() {
@@ -103,7 +147,7 @@ public class SimulationManager {
 
         try {
             customerCount++;
-            Customer customer = new Customer(customerCount);
+            Customer customer = new Customer(customerCount); // Передаем customerCount как customerId
 
             Platform.runLater(() -> {
                 controller.addCustomerToQueue(customer);
@@ -114,46 +158,7 @@ public class SimulationManager {
         }
     }
 
-    private void processOrder() {
-        if (!isRunning.get() || orderTaker.isBusy()) return;
 
-        try {
-            // ПРОВЕРЯЕМ ЧЕРЕЗ КОНТРОЛЛЕР, ЕСТЬ ЛИ КЛИЕНТЫ
-            if (!controller.hasWaitingCustomers()) {
-                return; // Нет клиентов - не обрабатываем заказы
-            }
-
-            int orderId = orderTaker.takeOrder();
-            if (orderId != -1) {
-                Order order = new Order(orderId);
-                kitchenQueue.addOrder(order);
-
-                Platform.runLater(() -> {
-                    // УДАЛЯЕМ КЛИЕНТА ИЗ ОЧЕРЕДИ ЧЕРЕЗ КОНТРОЛЛЕР
-                    Customer customer = controller.getNextCustomer();
-                    if (customer != null) {
-                        controller.removeCustomerFromQueue(customer.getOrderId());
-                    }
-
-                    controller.updateOrderTakerStatus(orderId);
-                    controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
-                    System.out.println("Заказ #" + orderId + " добавлен в кухонную очередь для клиента #" +
-                            (customer != null ? customer.getOrderId() : "unknown"));
-                });
-
-                // Имитация обработки заказа кассиром
-                executor.schedule(() -> {
-                    orderTaker.completeOrder();
-                    Platform.runLater(() -> {
-                        controller.updateOrderTakerStatus(-1);
-                    });
-                }, 500, TimeUnit.MILLISECONDS);
-            }
-        } catch (Exception e) {
-            System.err.println("Ошибка при обработке заказа: " + e.getMessage());
-            orderTaker.completeOrder();
-        }
-    }
 
     public boolean isRunning() {
         return isRunning.get();

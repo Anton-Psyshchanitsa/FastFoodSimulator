@@ -1,7 +1,8 @@
 package second.fastfoodsimulator.model.entities;
 
 public class Customer {
-    private final int orderId;
+    private final int customerId; // Меняем orderId на customerId
+    private Integer orderId; // Может быть null пока заказ не оформлен
     private CustomerState state;
     private long arrivalTime;
 
@@ -11,14 +12,23 @@ public class Customer {
         COMPLETED
     }
 
-    public Customer(int orderId) {
-        this.orderId = orderId;
+    public Customer(int customerId) {
+        this.customerId = customerId;
         this.state = CustomerState.WAITING_ORDER;
         this.arrivalTime = System.currentTimeMillis();
+        this.orderId = null;
     }
 
-    public int getOrderId() {
+    public int getCustomerId() {
+        return customerId;
+    }
+
+    public Integer getOrderId() {
         return orderId;
+    }
+
+    public void setOrderId(Integer orderId) {
+        this.orderId = orderId;
     }
 
     public CustomerState getState() {

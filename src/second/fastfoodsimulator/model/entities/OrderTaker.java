@@ -1,6 +1,5 @@
 package second.fastfoodsimulator.model.entities;
 
-import second.fastfoodsimulator.model.queues.KitchenQueue;
 import second.fastfoodsimulator.util.OrderNumberGenerator;
 
 public class OrderTaker {
