@@ -206,7 +206,10 @@ public class MainController {
     public void addCustomerToQueue(Customer customer) {
         System.out.println("Добавление клиента #" + customer.getOrderId());
 
-        customerQueue.add(customer);
+        // ДОБАВЛЯЕМ КЛИЕНТА В ОЧЕРЕДЬ
+        synchronized (customerQueue) {
+            customerQueue.add(customer);
+        }
 
         Platform.runLater(() -> {
             updateCustomerQueueCount(customerQueue.size());
@@ -236,7 +239,10 @@ public class MainController {
     public void removeCustomerFromQueue(int orderId) {
         System.out.println("Удаление клиента #" + orderId);
 
-        customerQueue.removeIf(customer -> customer.getOrderId() == orderId);
+        // УДАЛЯЕМ КЛИЕНТА ИЗ ОЧЕРЕДИ
+        synchronized (customerQueue) {
+            customerQueue.removeIf(customer -> customer.getOrderId() == orderId);
+        }
 
         Platform.runLater(() -> {
             updateCustomerQueueCount(customerQueue.size());
@@ -286,6 +292,23 @@ public class MainController {
                 orderTakerPulseAnimation = pulse;
             }
         });
+    }
+
+    // ДОБАВЛЯЕМ МЕТОД ДЛЯ ПРОВЕРКИ НАЛИЧИЯ КЛИЕНТОВ
+    public boolean hasWaitingCustomers() {
+        synchronized (customerQueue) {
+            return !customerQueue.isEmpty();
+        }
+    }
+
+    // ДОБАВЛЯЕМ МЕТОД ДЛЯ ПОЛУЧЕНИЯ СЛЕДУЮЩЕГО КЛИЕНТА
+    public Customer getNextCustomer() {
+        synchronized (customerQueue) {
+            if (customerQueue.isEmpty()) {
+                return null;
+            }
+            return customerQueue.remove(0);
+        }
     }
 
     public void updateKitchenQueue(int count) {

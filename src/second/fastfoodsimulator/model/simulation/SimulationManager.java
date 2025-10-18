@@ -118,16 +118,27 @@ public class SimulationManager {
         if (!isRunning.get() || orderTaker.isBusy()) return;
 
         try {
+            // ПРОВЕРЯЕМ ЧЕРЕЗ КОНТРОЛЛЕР, ЕСТЬ ЛИ КЛИЕНТЫ
+            if (!controller.hasWaitingCustomers()) {
+                return; // Нет клиентов - не обрабатываем заказы
+            }
+
             int orderId = orderTaker.takeOrder();
             if (orderId != -1) {
                 Order order = new Order(orderId);
                 kitchenQueue.addOrder(order);
 
                 Platform.runLater(() -> {
-                    controller.removeCustomerFromQueue(orderId);
+                    // УДАЛЯЕМ КЛИЕНТА ИЗ ОЧЕРЕДИ ЧЕРЕЗ КОНТРОЛЛЕР
+                    Customer customer = controller.getNextCustomer();
+                    if (customer != null) {
+                        controller.removeCustomerFromQueue(customer.getOrderId());
+                    }
+
                     controller.updateOrderTakerStatus(orderId);
                     controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
-                    System.out.println("Заказ #" + orderId + " добавлен в кухонную очередь");
+                    System.out.println("Заказ #" + orderId + " добавлен в кухонную очередь для клиента #" +
+                            (customer != null ? customer.getOrderId() : "unknown"));
                 });
 
                 // Имитация обработки заказа кассиром
@@ -140,7 +151,7 @@ public class SimulationManager {
             }
         } catch (Exception e) {
             System.err.println("Ошибка при обработке заказа: " + e.getMessage());
-            orderTaker.completeOrder(); // Сбрасываем состояние в случае ошибки
+            orderTaker.completeOrder();
         }
     }
 
