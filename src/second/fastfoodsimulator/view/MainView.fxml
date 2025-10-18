@@ -12,7 +12,7 @@
       fx:controller="second.fastfoodsimulator.view.controllers.MainController"
       style="-fx-background-color: #f5f5f5; -fx-padding: 20; -fx-spacing: 20;">
 
-    <!-- Добавляем новые поля ввода в MainView.fxml cec -->
+    <!-- Добавляем новые поля ввода в MainView.fxml -->
     <HBox spacing="15" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10;">
         <VBox spacing="10">
             <Label text="Интервал прихода клиентов (мс):" style="-fx-font-weight: bold;" />
