@@ -86,6 +86,8 @@ public class MainController {
     private Circle customerIndicator;
     @FXML
     private Circle serverIndicator;
+    @FXML
+    private Circle cooksIndicator;
 
     @FXML
     private Button startButton;
@@ -100,6 +102,7 @@ public class MainController {
     private Animation orderTakerPulseAnimation;
     private Animation customerPulseAnimation;
     private Animation serverPulseAnimation;
+    private Animation cooksPulseAnimation;
 
     public MainController() {
         this.simulationManager = new SimulationManager(this);
@@ -175,6 +178,7 @@ public class MainController {
         customerIndicator.setFill(Color.GRAY);
         orderTakerIndicator.setFill(Color.GRAY);
         serverIndicator.setFill(Color.GRAY);
+        cooksIndicator.setFill(Color.GRAY);
 
         stopAllAnimations();
 
@@ -422,7 +426,6 @@ public class MainController {
 
     public void updateCookStatus(int cookId, int orderId) {
         Platform.runLater(() -> {
-            // ИСПРАВЛЕННАЯ СТРОКА - получаем cooksManager из simulationManager
             updateCooksStatus(simulationManager.getCooksManager());
         });
     }
@@ -436,6 +439,8 @@ public class MainController {
 
             activeCooksLabel.setText("(" + busyCooks + "/" + totalCooks + " активны)");
 
+            updateCooksIndicator(busyCooks);
+
             cooksStatusBox.getChildren().clear();
 
             for (Cook cook : cooksManager.getCooks()) {
@@ -448,6 +453,34 @@ public class MainController {
                 cooksStatusBox.getChildren().add(cookLabel);
             }
         });
+    }
+
+    private void updateCooksIndicator(int busyCooksCount) {
+        if (busyCooksCount > 0) {
+            // Есть активные повара - красный цвет с анимацией
+            cooksIndicator.setFill(Color.RED);
+
+            if (cooksPulseAnimation != null) {
+                cooksPulseAnimation.stop();
+            }
+
+            ScaleTransition pulse = new ScaleTransition(Duration.millis(500), cooksIndicator);
+            pulse.setFromX(1.0);
+            pulse.setFromY(1.0);
+            pulse.setToX(0.6);
+            pulse.setToY(0.6);
+            pulse.setAutoReverse(true);
+            pulse.setCycleCount(Animation.INDEFINITE);
+            pulse.play();
+
+            cooksPulseAnimation = pulse;
+        } else {
+            cooksIndicator.setFill(Color.GRAY);
+            if (cooksPulseAnimation != null) {
+                cooksPulseAnimation.stop();
+                cooksPulseAnimation = null;
+            }
+        }
     }
 
     public void updateServingQueue(int count) {
@@ -633,6 +666,8 @@ public class MainController {
     private void initializeAnimations() {
         customerIndicator.setFill(Color.GRAY);
         orderTakerIndicator.setFill(Color.GRAY);
+        serverIndicator.setFill(Color.GRAY);
+        cooksIndicator.setFill(Color.GRAY);
     }
 
     private void stopAllAnimations() {
@@ -647,6 +682,10 @@ public class MainController {
         if (serverPulseAnimation != null) {
             serverPulseAnimation.stop();
             serverPulseAnimation = null;
+        }
+        if (cooksPulseAnimation != null) {
+            cooksPulseAnimation.stop();
+            cooksPulseAnimation = null;
         }
     }
 

@@ -156,7 +156,8 @@
               spacing="15">
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <Label text="👨‍🍳 Повара" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold; -fx-font-size: 18;" />
-                <Label fx:id="activeCooksLabel" style="-fx-text-fill: #2ecc71; -fx-font-weight: bold;" text="(0/0 активны)" />
+                <Circle fx:id="cooksIndicator" radius="8" fill="#95a5a6" />
+                <Label fx:id="activeCooksLabel" style="-fx-text-fill: #e74c3c; -fx-font-weight: bold;" text="(0/0 активны)" />
             </HBox>
 
             <!-- Текущий заказ на кухне -->
