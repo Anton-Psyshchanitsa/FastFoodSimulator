@@ -4,6 +4,7 @@ import second.fastfoodsimulator.model.entities.Customer;
 import second.fastfoodsimulator.model.entities.Order;
 import second.fastfoodsimulator.model.entities.OrderTaker;
 import second.fastfoodsimulator.model.queues.KitchenQueue;
+import second.fastfoodsimulator.model.queues.ServingQueue;
 import second.fastfoodsimulator.view.controllers.MainController;
 import javafx.application.Platform;
 
@@ -15,25 +16,31 @@ public class SimulationManager {
     private final MainController controller;
     private final OrderTaker orderTaker;
     private final KitchenQueue kitchenQueue;
+    private final ServingQueue servingQueue;
     private final ScheduledExecutorService executor;
+    private final CookSimulation cookSimulation;
 
     private int customerCount = 0;
-    private int servingLineCount = 0;
+    private final int servingLineCount = 0;
 
     public SimulationManager(MainController controller) {
         this.controller = controller;
         this.orderTaker = new OrderTaker();
         this.kitchenQueue = new KitchenQueue();
-        this.executor = Executors.newScheduledThreadPool(3);
+        this.servingQueue = new ServingQueue();
+        this.executor = Executors.newScheduledThreadPool(4);
+        this.cookSimulation = new CookSimulation(controller, kitchenQueue, servingQueue);
     }
 
-    public void startSimulation(int customerInterval, int orderInterval) {
+    public void startSimulation(int customerInterval, int orderInterval, int cookingInterval) {
         executor.scheduleAtFixedRate(this::generateCustomer, 0, customerInterval, TimeUnit.MILLISECONDS);
         executor.scheduleAtFixedRate(this::processOrder, 0, orderInterval, TimeUnit.MILLISECONDS);
+        cookSimulation.startCooking(cookingInterval);
     }
 
     public void stopSimulation() {
         executor.shutdown();
+        cookSimulation.stopCooking();
     }
 
     private void generateCustomer() {
@@ -42,8 +49,6 @@ public class SimulationManager {
 
         Platform.runLater(() -> {
             controller.addCustomerToQueue(customer);
-            // УДАЛИТЕ ЭТУ СТРОКУ:
-            // controller.updateCustomerQueueCount(customerQueue.size());
         });
     }
 
@@ -57,22 +62,21 @@ public class SimulationManager {
                 Platform.runLater(() -> {
                     controller.removeCustomerFromQueue(orderId);
                     controller.updateOrderTakerStatus(orderId);
-                    // Передаем количество заказов на кухне
                     controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
                     System.out.println("Заказ #" + orderId + " добавлен в кухонную очередь");
                 });
 
-                // Имитация обработки заказа
                 executor.schedule(() -> {
                     orderTaker.completeOrder();
                     Platform.runLater(() -> {
                         controller.updateOrderTakerStatus(-1);
-                        // После обработки обновляем количество заказов на кухне
-                        controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
                         System.out.println("Кассир свободен");
                     });
                 }, 500, TimeUnit.MILLISECONDS);
             }
         }
+    }
+    public boolean isRunning() {
+        return !executor.isShutdown();
     }
 }

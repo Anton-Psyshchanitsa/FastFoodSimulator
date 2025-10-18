@@ -3,7 +3,7 @@ package second.fastfoodsimulator.model.entities;
 public class Order {
     private final int orderId;
     private OrderState state;
-    private long creationTime;
+    private final long creationTime;
 
     public enum OrderState {
         NEW,

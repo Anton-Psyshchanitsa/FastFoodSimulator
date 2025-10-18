@@ -54,8 +54,9 @@
             <HBox spacing="10">
                 <Label text="Кухня" style="-fx-font-weight: bold; -fx-font-size: 16;" />
                 <Circle fx:id="kitchenIndicator" radius="5" fill="#95a5a6" />
+                <Circle fx:id="cookIndicator" radius="5" fill="#95a5a6" /> <!-- ДОБАВЬТЕ ЭТОТ ЭЛЕМЕНТ -->
             </HBox>
-            <Label fx:id="currentKitchenOrder" style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+            <Label fx:id="currentKitchenOrder" style="-fx-font-size: 20; -fx-font-weight: bold;" text="Нет заказа" />
             <Label fx:id="kitchenQueueCount" style="-fx-font-size: 24; -fx-font-weight: bold;" />
             <ScrollPane prefHeight="200" fitToWidth="true">
                 <VBox fx:id="kitchenQueueBox" spacing="5" />
@@ -66,10 +67,13 @@
         <VBox GridPane.columnIndex="3" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10;">
             <HBox spacing="10">
                 <Label text="Зона выдачи" style="-fx-font-weight: bold; -fx-font-size: 16;" />
-                <Circle fx:id="pickupIndicator" radius="5" fill="#95a5a6" />
+                <Circle fx:id="serverIndicator" radius="5" fill="#95a5a6" />
             </HBox>
             <Label fx:id="currentPickupOrder" style="-fx-font-size: 20; -fx-font-weight: bold;" text="Нет заказа" />
             <Label fx:id="servingLineCount" style="-fx-font-size: 24; -fx-font-weight: bold;" />
+            <ScrollPane prefHeight="200" fitToWidth="true">
+                <VBox fx:id="servingQueueBox" spacing="5" />
+            </ScrollPane>
         </VBox>
     </GridPane>
 </VBox>
