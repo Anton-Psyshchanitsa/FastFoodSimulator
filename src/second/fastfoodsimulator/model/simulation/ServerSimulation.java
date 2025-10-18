@@ -16,7 +16,7 @@ public class ServerSimulation {
     private final Server server;
     private final ServingQueue servingQueue;
     private final ServingLine servingLine;
-    private final ScheduledExecutorService executor;
+    private ScheduledExecutorService executor; // УБИРАЕМ FINAL
 
     public ServerSimulation(MainController controller, ServingQueue servingQueue, ServingLine servingLine) {
         this.controller = controller;
@@ -27,11 +27,24 @@ public class ServerSimulation {
     }
 
     public void startServing(int servingInterval) {
+        // ЕСЛИ EXECUTOR БЫЛ ЗАВЕРШЕН, СОЗДАЕМ НОВЫЙ
+        if (executor == null || executor.isShutdown() || executor.isTerminated()) {
+            executor = Executors.newScheduledThreadPool(1);
+        }
         executor.scheduleAtFixedRate(this::processServing, 0, servingInterval, TimeUnit.MILLISECONDS);
     }
 
     public void stopServing() {
-        executor.shutdown();
+        if (executor != null && !executor.isShutdown()) {
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(1, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+            }
+        }
     }
 
     private void processServing() {
@@ -64,4 +77,17 @@ public class ServerSimulation {
             }
         }
     }
+
+    // ДОБАВЛЯЕМ МЕТОД ДЛЯ СБРОСА СОСТОЯНИЯ
+    public void reset() {
+        // Сбрасываем состояние сервера
+        server.completeServing();
+
+        // Останавливаем и пересоздаем executor
+        stopServing();
+        executor = Executors.newScheduledThreadPool(1);
+
+        System.out.println("Состояние ServerSimulation сброшено");
+    }
+
 }

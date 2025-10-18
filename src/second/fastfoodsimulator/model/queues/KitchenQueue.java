@@ -41,4 +41,10 @@ public class KitchenQueue {
         }
         return orderIds;
     }
+
+    // ДОБАВЛЯЕМ МЕТОД ДЛЯ ОЧИСТКИ ОЧЕРЕДИ
+    public synchronized void clear() {
+        orders.clear();
+    }
+
 }

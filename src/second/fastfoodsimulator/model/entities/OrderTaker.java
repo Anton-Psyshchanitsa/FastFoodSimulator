@@ -17,6 +17,7 @@ public class OrderTaker {
     public synchronized void completeOrder() {
         busy = false;
         currentOrderId = -1;
+        System.out.println("Кассир завершил оформление заказа, состояние сброшено");
     }
 
     public synchronized int getCurrentOrderId() {

@@ -15,6 +15,7 @@ public class Server {
     public synchronized void completeServing() {
         busy = false;
         currentOrderId = -1;
+        System.out.println("Сервер завершил выдачу, состояние сброшено");
     }
 
     public synchronized int getCurrentOrderId() {

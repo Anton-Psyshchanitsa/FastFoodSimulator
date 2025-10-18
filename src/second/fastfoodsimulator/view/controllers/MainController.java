@@ -112,50 +112,6 @@ public class MainController {
         resetUI();
     }
 
-    private void resetUI() {
-        customerQueueCount.setText("0");
-        currentOrderTaker.setText("Нет заказа");
-        currentKitchenOrder.setText("Нет заказа");
-        kitchenQueueCount.setText("0");
-        currentPickupOrder.setText("Нет заказа");
-        servingQueueCount.setText("0");
-        waitingCustomersCount.setText("0"); // СБРАСЫВАЕМ НОВЫЙ СЧЕТЧИК
-
-        customerQueue.clear();
-        customerLabels.clear();
-        customerQueueBox.getChildren().clear();
-        kitchenQueueBox.getChildren().clear();
-        servingQueueBox.getChildren().clear();
-        waitingCustomersBox.getChildren().clear(); // ОЧИЩАЕМ НОВЫЙ БЛОК
-
-        customerIndicator.setFill(Color.GRAY);
-        orderTakerIndicator.setFill(Color.GRAY);
-        kitchenIndicator.setFill(Color.GRAY);
-        cookIndicator.setFill(Color.GRAY);
-        serverIndicator.setFill(Color.GRAY);
-
-        if (customerPulseAnimation != null) {
-            customerPulseAnimation.stop();
-            customerPulseAnimation = null;
-        }
-        if (orderTakerPulseAnimation != null) {
-            orderTakerPulseAnimation.stop();
-            orderTakerPulseAnimation = null;
-        }
-        if (kitchenPulseAnimation != null) {
-            kitchenPulseAnimation.stop();
-            kitchenPulseAnimation = null;
-        }
-        if (cookPulseAnimation != null) {
-            cookPulseAnimation.stop();
-            cookPulseAnimation = null;
-        }
-        if (serverPulseAnimation != null) {
-            serverPulseAnimation.stop();
-            serverPulseAnimation = null;
-        }
-    }
-
     @FXML
     private void startSimulation() {
         try {
@@ -196,6 +152,57 @@ public class MainController {
         resetUI();
     }
 
+    private void resetUI() {
+        customerQueueCount.setText("0");
+        currentOrderTaker.setText("Нет заказа");
+        currentKitchenOrder.setText("Нет заказа");
+        kitchenQueueCount.setText("0");
+        currentPickupOrder.setText("Нет заказа");
+        servingQueueCount.setText("0");
+        waitingCustomersCount.setText("0"); // СБРАСЫВАЕМ НОВЫЙ СЧЕТЧИК
+
+        customerQueue.clear();
+        customerLabels.clear();
+        customerQueueBox.getChildren().clear();
+        kitchenQueueBox.getChildren().clear();
+        servingQueueBox.getChildren().clear();
+        waitingCustomersBox.getChildren().clear(); // ОЧИЩАЕМ НОВЫЙ БЛОК
+
+        customerIndicator.setFill(Color.GRAY);
+        orderTakerIndicator.setFill(Color.GRAY);
+        kitchenIndicator.setFill(Color.GRAY);
+        cookIndicator.setFill(Color.GRAY);
+        serverIndicator.setFill(Color.GRAY);
+
+        // Останавливаем анимации
+        stopAllAnimations();
+
+        System.out.println("UI полностью сброшен");
+    }
+
+    private void stopAllAnimations() {
+        if (customerPulseAnimation != null) {
+            customerPulseAnimation.stop();
+            customerPulseAnimation = null;
+        }
+        if (orderTakerPulseAnimation != null) {
+            orderTakerPulseAnimation.stop();
+            orderTakerPulseAnimation = null;
+        }
+        if (kitchenPulseAnimation != null) {
+            kitchenPulseAnimation.stop();
+            kitchenPulseAnimation = null;
+        }
+        if (cookPulseAnimation != null) {
+            cookPulseAnimation.stop();
+            cookPulseAnimation = null;
+        }
+        if (serverPulseAnimation != null) {
+            serverPulseAnimation.stop();
+            serverPulseAnimation = null;
+        }
+    }
+
     public void showError(String message) {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -205,8 +212,6 @@ public class MainController {
 
             // Устанавливаем иконку окна
             Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
-            stage.getIcons().add(new Image("/styles/error-icon.png"));
-
             alert.showAndWait();
         });
     }

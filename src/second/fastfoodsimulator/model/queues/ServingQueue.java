@@ -42,4 +42,10 @@ public class ServingQueue {
         }
         return orderIds;
     }
+
+    // ДОБАВЛЯЕМ МЕТОД ДЛЯ ОЧИСТКИ ОЧЕРЕДИ
+    public synchronized void clear() {
+        readyOrders.clear();
+    }
+
 }

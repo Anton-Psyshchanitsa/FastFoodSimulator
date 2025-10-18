@@ -15,6 +15,7 @@ public class Cook {
     public synchronized void completeCooking() {
         busy = false;
         currentOrderId = -1;
+        System.out.println("Повар завершил готовку, состояние сброшено");
     }
 
     public synchronized int getCurrentOrderId() {

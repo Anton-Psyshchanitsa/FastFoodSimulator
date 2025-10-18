@@ -16,7 +16,7 @@ public class CookSimulation {
     private final Cook cook;
     private final KitchenQueue kitchenQueue;
     private final ServingQueue servingQueue;
-    private final ScheduledExecutorService executor;
+    private ScheduledExecutorService executor; // УБИРАЕМ FINAL
 
     public CookSimulation(MainController controller, KitchenQueue kitchenQueue, ServingQueue servingQueue) {
         this.controller = controller;
@@ -27,11 +27,24 @@ public class CookSimulation {
     }
 
     public void startCooking(int cookingInterval) {
+        // ЕСЛИ EXECUTOR БЫЛ ЗАВЕРШЕН, СОЗДАЕМ НОВЫЙ
+        if (executor == null || executor.isShutdown() || executor.isTerminated()) {
+            executor = Executors.newScheduledThreadPool(1);
+        }
         executor.scheduleAtFixedRate(this::processOrder, 0, cookingInterval, TimeUnit.MILLISECONDS);
     }
 
     public void stopCooking() {
-        executor.shutdown();
+        if (executor != null && !executor.isShutdown()) {
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(1, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+            }
+        }
     }
 
     private void processOrder() {
@@ -60,4 +73,17 @@ public class CookSimulation {
             }
         }
     }
+
+    // ДОБАВЛЯЕМ МЕТОД ДЛЯ СБРОСА СОСТОЯНИЯ
+    public void reset() {
+        // Сбрасываем состояние повара
+        cook.completeCooking();
+
+        // Останавливаем и пересоздаем executor
+        stopCooking();
+        executor = Executors.newScheduledThreadPool(1);
+
+        System.out.println("Состояние CookSimulation сброшено");
+    }
+
 }

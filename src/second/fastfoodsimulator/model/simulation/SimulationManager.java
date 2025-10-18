@@ -1,9 +1,12 @@
 package second.fastfoodsimulator.model.simulation;
 
+import javafx.scene.control.Alert;
+import javafx.scene.image.Image;
+import javafx.stage.Stage;
 import second.fastfoodsimulator.model.entities.*;
 import second.fastfoodsimulator.model.queues.KitchenQueue;
-import second.fastfoodsimulator.model.queues.ServingLine;
 import second.fastfoodsimulator.model.queues.ServingQueue;
+import second.fastfoodsimulator.model.queues.ServingLine;
 import second.fastfoodsimulator.view.controllers.MainController;
 import javafx.application.Platform;
 
@@ -15,8 +18,8 @@ public class SimulationManager {
     private final OrderTaker orderTaker;
     private final KitchenQueue kitchenQueue;
     private final ServingQueue servingQueue;
-    private final ServingLine servingLine; // ДОБАВЛЯЕМ
-    private final ScheduledExecutorService executor;
+    private final ServingLine servingLine;
+    private ScheduledExecutorService executor; // УБИРАЕМ FINAL
     private final CookSimulation cookSimulation;
     private final ServerSimulation serverSimulation;
 
@@ -28,10 +31,10 @@ public class SimulationManager {
         this.orderTaker = new OrderTaker();
         this.kitchenQueue = new KitchenQueue();
         this.servingQueue = new ServingQueue();
-        this.servingLine = new ServingLine(); // УБЕДИТЕСЬ, ЧТО servingLine ИНИЦИАЛИЗИРОВАН
-        this.executor = Executors.newScheduledThreadPool(4);
+        this.servingLine = new ServingLine();
+        this.executor = Executors.newScheduledThreadPool(4); // ИНИЦИАЛИЗИРУЕМ ЗДЕСЬ
         this.cookSimulation = new CookSimulation(controller, kitchenQueue, servingQueue);
-        this.serverSimulation = new ServerSimulation(controller, servingQueue, servingLine); // ПЕРЕДАЕМ servingLine
+        this.serverSimulation = new ServerSimulation(controller, servingQueue, servingLine);
     }
 
     public void startSimulation(int customerInterval, int orderInterval, int cookingInterval, int servingInterval) {
@@ -43,6 +46,15 @@ public class SimulationManager {
         try {
             validateIntervals(customerInterval, orderInterval, cookingInterval, servingInterval);
 
+            // ЕСЛИ EXECUTOR БЫЛ ЗАВЕРШЕН, СОЗДАЕМ НОВЫЙ
+            if (executor == null || executor.isShutdown() || executor.isTerminated()) {
+                System.out.println("Создаем новый ScheduledExecutorService");
+                executor = Executors.newScheduledThreadPool(4);
+            }
+
+            // СБРАСЫВАЕМ СОСТОЯНИЕ ПЕРЕД ЗАПУСКОМ
+            resetSimulationState();
+
             isRunning.set(true);
 
             // Запускаем все компоненты симуляции
@@ -51,13 +63,94 @@ public class SimulationManager {
             cookSimulation.startCooking(cookingInterval);
             serverSimulation.startServing(servingInterval);
 
-            System.out.println("Симуляция запущена успешно");
+            System.out.println("Симуляция запущена успешно. Начинаем с чистого состояния.");
 
         } catch (IllegalArgumentException e) {
-            Platform.runLater(() -> controller.showError(e.getMessage()));
+            Platform.runLater(() -> showErrorDialog(e.getMessage()));
         } catch (Exception e) {
-            Platform.runLater(() -> controller.showError("Ошибка запуска симуляции: " + e.getMessage()));
+            Platform.runLater(() -> showErrorDialog("Ошибка запуска симуляции: " + e.getMessage()));
             stopSimulation();
+        }
+    }
+
+
+    public void stopSimulation() {
+        if (!isRunning.get()) {
+            return;
+        }
+
+        isRunning.set(false);
+
+        try {
+            // Останавливаем все компоненты
+            cookSimulation.stopCooking();
+            serverSimulation.stopServing();
+
+            // Завершаем executor
+            if (executor != null && !executor.isShutdown()) {
+                executor.shutdown();
+                if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            }
+
+            System.out.println("Симуляция остановлена");
+
+        } catch (InterruptedException e) {
+            if (executor != null) {
+                executor.shutdownNow();
+            }
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void resetSimulationState() {
+        // Очищаем очереди
+        kitchenQueue.clear();
+        servingQueue.clear();
+        servingLine.clear();
+
+        // Сбрасываем счетчики
+        customerCount = 0;
+
+        // Сбрасываем состояния всех работников
+        orderTaker.completeOrder();
+        cookSimulation.reset();
+        serverSimulation.reset();
+
+        // Сбрасываем генератор заказов (теперь через публичный метод)
+        second.fastfoodsimulator.util.OrderNumberGenerator.reset();
+
+        System.out.println("Состояние симуляции полностью сброшено");
+    }
+
+    // ДОБАВЛЯЕМ МЕТОД ДЛЯ СБРОСА ГЕНЕРАТОРА ЗАКАЗОВ
+    private void resetOrderNumberGenerator() {
+        try {
+            // Используем рефлексию для сброса счетчика
+            java.lang.reflect.Field counterField = second.fastfoodsimulator.util.OrderNumberGenerator.class.getDeclaredField("counter");
+            counterField.setAccessible(true);
+            counterField.set(null, 0);
+            System.out.println("Генератор номеров заказов сброшен");
+        } catch (Exception e) {
+            System.err.println("Не удалось сбросить генератор заказов: " + e.getMessage());
+            // Создаем новый экземпляр OrderNumberGenerator если рефлексия не работает
+        }
+    }
+
+    private void generateCustomer() {
+        if (!isRunning.get()) return;
+
+        try {
+            customerCount++;
+            Customer customer = new Customer(customerCount);
+
+            Platform.runLater(() -> {
+                controller.addCustomerToQueue(customer);
+            });
+
+        } catch (Exception e) {
+            System.err.println("Ошибка при генерации клиента: " + e.getMessage());
         }
     }
 
@@ -81,7 +174,7 @@ public class SimulationManager {
                     controller.removeCustomerFromQueue(customer.getCustomerId());
                     controller.updateOrderTakerStatus(orderId);
                     controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
-                    controller.updateWaitingCustomers(servingLine.getWaitingCustomerCount()); // ОБНОВЛЯЕМ UI
+                    controller.updateWaitingCustomers(servingLine.getWaitingCustomerCount());
                     System.out.println("Заказ #" + orderId + " оформлен для клиента #" + customer.getCustomerId());
                 });
 
@@ -101,30 +194,21 @@ public class SimulationManager {
         }
     }
 
-    public void stopSimulation() {
-        if (!isRunning.get()) {
-            return;
-        }
-
-        isRunning.set(false);
+    // ДОБАВЛЯЕМ МЕТОД ДЛЯ ПОКАЗА ОШИБОК
+    private void showErrorDialog(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Ошибка симуляции");
+        alert.setHeaderText("Произошла ошибка");
+        alert.setContentText(message);
 
         try {
-            // Останавливаем все компоненты
-            cookSimulation.stopCooking();
-            serverSimulation.stopServing();
-
-            // Завершаем executor
-            executor.shutdown();
-            if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
-                executor.shutdownNow();
-            }
-
-            System.out.println("Симуляция остановлена");
-
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
+            Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
+            stage.getIcons().add(new Image(getClass().getResource("/styles/error-icon.png").toExternalForm()));
+        } catch (Exception e) {
+            System.err.println("Не удалось загрузить иконку ошибки: " + e.getMessage());
         }
+
+        alert.showAndWait();
     }
 
     private void validateIntervals(int... intervals) {
@@ -137,24 +221,6 @@ public class SimulationManager {
             }
         }
     }
-
-    private void generateCustomer() {
-        if (!isRunning.get()) return;
-
-        try {
-            customerCount++;
-            Customer customer = new Customer(customerCount); // Передаем customerCount как customerId
-
-            Platform.runLater(() -> {
-                controller.addCustomerToQueue(customer);
-            });
-
-        } catch (Exception e) {
-            System.err.println("Ошибка при генерации клиента: " + e.getMessage());
-        }
-    }
-
-
 
     public boolean isRunning() {
         return isRunning.get();
