@@ -17,7 +17,7 @@ public class ServerSimulation {
     private final Server server;
     private final ServingQueue servingQueue;
     private final ServingLine servingLine;
-    private ScheduledExecutorService executor; // УБИРАЕМ FINAL
+    private ScheduledExecutorService executor;
 
     public ServerSimulation(MainController controller, ServingQueue servingQueue, ServingLine servingLine) {
         this.controller = controller;
@@ -28,7 +28,6 @@ public class ServerSimulation {
     }
 
     public void startServing(int servingInterval) {
-        // ЕСЛИ EXECUTOR БЫЛ ЗАВЕРШЕН, СОЗДАЕМ НОВЫЙ
         if (executor == null || executor.isShutdown() || executor.isTerminated()) {
             executor = Executors.newScheduledThreadPool(1);
         }
@@ -48,6 +47,13 @@ public class ServerSimulation {
         }
     }
 
+    public void reset() {
+        server.completeServing();
+        stopServing();
+        executor = Executors.newScheduledThreadPool(1);
+        System.out.println("Состояние ServerSimulation сброшено");
+    }
+
     private void processServing() {
         if (!server.isBusy()) {
             Order order = servingQueue.getNextReadyOrder();
@@ -64,19 +70,13 @@ public class ServerSimulation {
                     server.completeServing();
                     order.setState(Order.OrderState.COMPLETED);
 
-                    // ВЫЧИСЛЯЕМ ВРЕМЯ ОЖИДАНИЯ
                     long waitTime = calculateWaitTime(orderId);
-
-                    // УДАЛЯЕМ КЛИЕНТА ИЗ SERVING LINE
                     servingLine.removeCustomerByOrderId(orderId);
 
                     Platform.runLater(() -> {
                         controller.updateServerStatus(-1);
                         controller.updateWaitingCustomers(servingLine.getWaitingCustomerCount());
-
-                        // ПЕРЕДАЕМ ВРЕМЯ ОЖИДАНИЯ В СТАТИСТИКУ
                         controller.completeOrder(orderId, waitTime);
-
                         System.out.println("Заказ #" + orderId + " выдан клиенту. Время ожидания: " + waitTime + "мс");
                     });
                 }, 800, TimeUnit.MILLISECONDS);
@@ -84,7 +84,6 @@ public class ServerSimulation {
         }
     }
 
-    // ДОБАВЛЯЕМ МЕТОД ДЛЯ ВЫЧИСЛЕНИЯ ВРЕМЕНИ ОЖИДАНИЯ
     private long calculateWaitTime(int orderId) {
         Customer customer = servingLine.getCustomerByOrderId(orderId);
         if (customer != null && customer.getOrderStartTime() > 0) {
@@ -92,19 +91,6 @@ public class ServerSimulation {
             System.out.println("Время ожидания для заказа #" + orderId + ": " + waitTime + "мс");
             return waitTime;
         }
-        return 0; // Если время не удалось вычислить
+        return 0;
     }
-
-    // ДОБАВЛЯЕМ МЕТОД ДЛЯ СБРОСА СОСТОЯНИЯ
-    public void reset() {
-        // Сбрасываем состояние сервера
-        server.completeServing();
-
-        // Останавливаем и пересоздаем executor
-        stopServing();
-        executor = Executors.newScheduledThreadPool(1);
-
-        System.out.println("Состояние ServerSimulation сброшено");
-    }
-
 }

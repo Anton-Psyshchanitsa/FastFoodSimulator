@@ -14,6 +14,8 @@ import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import second.fastfoodsimulator.model.StatisticsManager;
+import second.fastfoodsimulator.model.entities.Cook;
+import second.fastfoodsimulator.model.entities.CooksManager;
 import second.fastfoodsimulator.model.entities.Customer;
 import second.fastfoodsimulator.model.simulation.SimulationManager;
 
@@ -75,6 +77,10 @@ public class MainController {
     @FXML
     private Circle customerIndicator;
 
+    @FXML private TextField cooksCountField;
+    @FXML private Label activeCooksLabel;
+    @FXML private VBox cooksStatusBox;
+
     @FXML
     private Button startButton;
     @FXML
@@ -102,8 +108,6 @@ public class MainController {
         // Проверяем, что все элементы не null
         if (customerIndicator == null) System.err.println("customerIndicator is null!");
         if (orderTakerIndicator == null) System.err.println("orderTakerIndicator is null!");
-        if (kitchenIndicator == null) System.err.println("kitchenIndicator is null!");
-        if (cookIndicator == null) System.err.println("cookIndicator is null!");
         if (serverIndicator == null) System.err.println("serverIndicator is null!");
 
         initializeAnimations();
@@ -125,21 +129,28 @@ public class MainController {
     @FXML
     private void startSimulation() {
         try {
-
             statisticsManager.startSimulation();
 
             int customerInterval = Integer.parseInt(customerIntervalField.getText());
             int orderInterval = Integer.parseInt(orderIntervalField.getText());
             int cookingInterval = Integer.parseInt(cookingIntervalField.getText());
             int servingInterval = Integer.parseInt(servingIntervalField.getText());
+            int cooksCount = Integer.parseInt(cooksCountField.getText());
 
-            simulationManager.startSimulation(customerInterval, orderInterval, cookingInterval, servingInterval);
+            // ПРОВЕРКА КОЛИЧЕСТВА ПОВАРОВ
+            if (cooksCount <= 0 || cooksCount > 10) {
+                showError("Количество поваров должно быть от 1 до 10");
+                return;
+            }
 
-            // Блокируем поля ввода во время симуляции
+            simulationManager.startSimulation(customerInterval, orderInterval, cookingInterval, servingInterval, cooksCount);
+
+            // Блокируем поля ввода
             customerIntervalField.setDisable(true);
             orderIntervalField.setDisable(true);
             cookingIntervalField.setDisable(true);
             servingIntervalField.setDisable(true);
+            cooksCountField.setDisable(true);
             startButton.setDisable(true);
             stopButton.setDisable(false);
 
@@ -161,34 +172,31 @@ public class MainController {
         orderIntervalField.setDisable(false);
         cookingIntervalField.setDisable(false);
         servingIntervalField.setDisable(false);
+        cooksCountField.setDisable(false);
         startButton.setDisable(false);
         stopButton.setDisable(true);
 
         resetUI();
-
         updateStatistics();
     }
 
     private void resetUI() {
         customerQueueCount.setText("0");
         currentOrderTaker.setText("Нет заказа");
-        currentKitchenOrder.setText("Нет заказа");
-        kitchenQueueCount.setText("0");
         currentPickupOrder.setText("Нет заказа");
         servingQueueCount.setText("0");
-        waitingCustomersCount.setText("0"); // СБРАСЫВАЕМ НОВЫЙ СЧЕТЧИК
+        waitingCustomersCount.setText("0");
+        activeCooksLabel.setText("(0/0 активны)");
 
         customerQueue.clear();
         customerLabels.clear();
         customerQueueBox.getChildren().clear();
-        kitchenQueueBox.getChildren().clear();
         servingQueueBox.getChildren().clear();
-        waitingCustomersBox.getChildren().clear(); // ОЧИЩАЕМ НОВЫЙ БЛОК
+        waitingCustomersBox.getChildren().clear();
+        cooksStatusBox.getChildren().clear();
 
         customerIndicator.setFill(Color.GRAY);
         orderTakerIndicator.setFill(Color.GRAY);
-        kitchenIndicator.setFill(Color.GRAY);
-        cookIndicator.setFill(Color.GRAY);
         serverIndicator.setFill(Color.GRAY);
 
         // Останавливаем анимации
@@ -208,14 +216,6 @@ public class MainController {
         if (orderTakerPulseAnimation != null) {
             orderTakerPulseAnimation.stop();
             orderTakerPulseAnimation = null;
-        }
-        if (kitchenPulseAnimation != null) {
-            kitchenPulseAnimation.stop();
-            kitchenPulseAnimation = null;
-        }
-        if (cookPulseAnimation != null) {
-            cookPulseAnimation.stop();
-            cookPulseAnimation = null;
         }
         if (serverPulseAnimation != null) {
             serverPulseAnimation.stop();
@@ -426,8 +426,6 @@ public class MainController {
                     fadeIn.play();
                 }
 
-                kitchenIndicator.setFill(Color.ORANGERED);
-
                 if (kitchenPulseAnimation != null) {
                     kitchenPulseAnimation.stop();
                 }
@@ -447,7 +445,6 @@ public class MainController {
                 emptyLabel.setStyle("-fx-text-fill: #95a5a6; -fx-font-style: italic;");
                 kitchenQueueBox.getChildren().add(emptyLabel);
 
-                kitchenIndicator.setFill(Color.GRAY);
                 if (kitchenPulseAnimation != null) {
                     kitchenPulseAnimation.stop();
                     kitchenPulseAnimation = null;
@@ -622,6 +619,38 @@ public class MainController {
         });
     }
 
+    public void updateCooksStatus(CooksManager cooksManager) {
+        Platform.runLater(() -> {
+            if (cooksManager == null) return;
+
+            int busyCooks = cooksManager.getBusyCooksCount();
+            int totalCooks = cooksManager.getTotalCooksCount();
+
+            activeCooksLabel.setText("(" + busyCooks + "/" + totalCooks + " активны)");
+
+            // ОБНОВЛЯЕМ СПИСОК СТАТУСОВ ПОВАРОВ
+            cooksStatusBox.getChildren().clear();
+
+            for (Cook cook : cooksManager.getCooks()) {
+                Label cookLabel = new Label(cook.getStatus());
+                if (cook.isBusy()) {
+                    cookLabel.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-padding: 8; -fx-background-radius: 5; -fx-font-weight: bold;");
+                } else {
+                    cookLabel.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-padding: 8; -fx-background-radius: 5;");
+                }
+                cooksStatusBox.getChildren().add(cookLabel);
+            }
+        });
+    }
+
+    public void updateCookStatus(int cookId, int orderId) {
+        Platform.runLater(() -> {
+            // Этот метод теперь вызывается для конкретного повара
+            // Основное обновление происходит в updateCooksStatus
+            updateCooksStatus(simulationManager.getCooksManager());
+        });
+    }
+
     // ОБНОВЛЯЕМ МЕТОД completeOrder ДЛЯ УЧЕТА ВРЕМЕНИ ОЖИДАНИЯ
     public void completeOrder(int orderId, long waitTime) {
         // СБОР СТАТИСТИКИ - ЗАКАЗ ЗАВЕРШЕН С УЧЕТОМ ВРЕМЕНИ
@@ -645,8 +674,6 @@ public class MainController {
     private void initializeAnimations() {
         customerIndicator.setFill(Color.GRAY);
         orderTakerIndicator.setFill(Color.GRAY);
-        kitchenIndicator.setFill(Color.GRAY);
-        cookIndicator.setFill(Color.GRAY);
         serverIndicator.setFill(Color.GRAY);
     }
 
@@ -656,6 +683,15 @@ public class MainController {
         });
         orderIntervalField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (!newVal.matches("\\d*")) orderIntervalField.setText(oldVal);
+        });
+        cookingIntervalField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal.matches("\\d*")) cookingIntervalField.setText(oldVal);
+        });
+        servingIntervalField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal.matches("\\d*")) servingIntervalField.setText(oldVal);
+        });
+        cooksCountField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal.matches("\\d*")) cooksCountField.setText(oldVal);
         });
     }
 }

@@ -20,11 +20,12 @@ public class SimulationManager {
     private final ServingQueue servingQueue;
     private final ServingLine servingLine;
     private ScheduledExecutorService executor; // УБИРАЕМ FINAL
-    private final CookSimulation cookSimulation;
+    private CooksManager cooksManager;
     private final ServerSimulation serverSimulation;
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
     private int customerCount = 0;
+    private int cooksCount = 2;
 
     public SimulationManager(MainController controller) {
         this.controller = controller;
@@ -32,12 +33,11 @@ public class SimulationManager {
         this.kitchenQueue = new KitchenQueue();
         this.servingQueue = new ServingQueue();
         this.servingLine = new ServingLine();
-        this.executor = Executors.newScheduledThreadPool(4); // ИНИЦИАЛИЗИРУЕМ ЗДЕСЬ
-        this.cookSimulation = new CookSimulation(controller, kitchenQueue, servingQueue);
+        this.executor = Executors.newScheduledThreadPool(6);
         this.serverSimulation = new ServerSimulation(controller, servingQueue, servingLine);
     }
 
-    public void startSimulation(int customerInterval, int orderInterval, int cookingInterval, int servingInterval) {
+    public void startSimulation(int customerInterval, int orderInterval, int cookingInterval, int servingInterval, int cooksCount) {
         if (isRunning.get()) {
             System.out.println("Симуляция уже запущена");
             return;
@@ -45,25 +45,24 @@ public class SimulationManager {
 
         try {
             validateIntervals(customerInterval, orderInterval, cookingInterval, servingInterval);
+            this.cooksCount = cooksCount;
 
-            // ЕСЛИ EXECUTOR БЫЛ ЗАВЕРШЕН, СОЗДАЕМ НОВЫЙ
             if (executor == null || executor.isShutdown() || executor.isTerminated()) {
                 System.out.println("Создаем новый ScheduledExecutorService");
-                executor = Executors.newScheduledThreadPool(4);
+                executor = Executors.newScheduledThreadPool(4 + cooksCount);
             }
 
-            // СБРАСЫВАЕМ СОСТОЯНИЕ ПЕРЕД ЗАПУСКОМ
+            this.cooksManager = new CooksManager(cooksCount);
             resetSimulationState();
-
             isRunning.set(true);
 
-            // Запускаем все компоненты симуляции
+            // ЗАПУСКАЕМ ПРОЦЕСС ПРИГОТОВЛЕНИЯ С БОЛЕЕ ЧАСТОЙ ПЕРИОДИЧНОСТЬЮ
             executor.scheduleAtFixedRate(this::generateCustomer, 0, customerInterval, TimeUnit.MILLISECONDS);
             executor.scheduleAtFixedRate(this::processOrder, 0, orderInterval, TimeUnit.MILLISECONDS);
-            cookSimulation.startCooking(cookingInterval);
+            executor.scheduleAtFixedRate(this::processCooking, 0, Math.max(100, cookingInterval / 2), TimeUnit.MILLISECONDS); // УВЕЛИЧИВАЕМ ЧАСТОТУ
             serverSimulation.startServing(servingInterval);
 
-            System.out.println("Симуляция запущена успешно. Начинаем с чистого состояния.");
+            System.out.println("Симуляция запущена успешно с " + cooksCount + " поварами");
 
         } catch (IllegalArgumentException e) {
             Platform.runLater(() -> showErrorDialog(e.getMessage()));
@@ -83,7 +82,7 @@ public class SimulationManager {
 
         try {
             // Останавливаем все компоненты
-            cookSimulation.stopCooking();
+
             serverSimulation.stopServing();
 
             // Завершаем executor
@@ -105,37 +104,72 @@ public class SimulationManager {
     }
 
     private void resetSimulationState() {
-        // Очищаем очереди
         kitchenQueue.clear();
         servingQueue.clear();
         servingLine.clear();
-
-        // Сбрасываем счетчики
         customerCount = 0;
-
-        // Сбрасываем состояния всех работников
         orderTaker.completeOrder();
-        cookSimulation.reset();
+        if (cooksManager != null) {
+            cooksManager.reset();
+        }
         serverSimulation.reset();
-
-        // Сбрасываем генератор заказов (теперь через публичный метод)
         second.fastfoodsimulator.util.OrderNumberGenerator.reset();
 
         System.out.println("Состояние симуляции полностью сброшено");
     }
 
-    // ДОБАВЛЯЕМ МЕТОД ДЛЯ СБРОСА ГЕНЕРАТОРА ЗАКАЗОВ
-    private void resetOrderNumberGenerator() {
+    private void processCooking() {
+        if (!isRunning.get()) return;
+
         try {
-            // Используем рефлексию для сброса счетчика
-            java.lang.reflect.Field counterField = second.fastfoodsimulator.util.OrderNumberGenerator.class.getDeclaredField("counter");
-            counterField.setAccessible(true);
-            counterField.set(null, 0);
-            System.out.println("Генератор номеров заказов сброшен");
+            // ОБРАБАТЫВАЕМ ВСЕХ СВОБОДНЫХ ПОВАРОВ ОДНОВРЕМЕННО
+            int processed = 0;
+            int maxProcessPerCycle = cooksManager.getTotalCooksCount(); // Максимум поваров за цикл
+
+            while (processed < maxProcessPerCycle) {
+                Cook availableCook = cooksManager.getAvailableCook();
+                if (availableCook == null) break; // Нет свободных поваров
+
+                Order order = kitchenQueue.getNextOrder();
+                if (order == null) break; // Нет заказов в очереди
+
+                startCooking(availableCook, order);
+                processed++;
+            }
+
+            // ОБНОВЛЯЕМ СТАТУСЫ ВСЕХ ПОВАРОВ ДАЖЕ ЕСЛИ НИЧЕГО НЕ ПРОИСХОДИТ
+            Platform.runLater(() -> {
+                controller.updateCooksStatus(cooksManager);
+            });
+
         } catch (Exception e) {
-            System.err.println("Не удалось сбросить генератор заказов: " + e.getMessage());
-            // Создаем новый экземпляр OrderNumberGenerator если рефлексия не работает
+            System.err.println("Ошибка при обработке приготовления: " + e.getMessage());
+            e.printStackTrace();
         }
+    }
+
+    private void startCooking(Cook cook, Order order) {
+        int orderId = cook.startCooking(order.getOrderId());
+
+        Platform.runLater(() -> {
+            controller.updateCookStatus(cook.getCookId(), orderId);
+            controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
+            controller.updateCooksStatus(cooksManager);
+            System.out.println("Повар #" + cook.getCookId() + " начинает готовить заказ #" + orderId);
+        });
+
+        // Имитация приготовления заказа
+        executor.schedule(() -> {
+            cook.completeCooking();
+            servingQueue.addReadyOrder(order);
+
+            Platform.runLater(() -> {
+                controller.updateCookStatus(cook.getCookId(), -1);
+                controller.updateServingQueue(servingQueue.getReadyCount());
+                controller.updateCooksStatus(cooksManager);
+                System.out.println("Повар #" + cook.getCookId() + " завершил заказ #" + orderId);
+            });
+        }, 1000, TimeUnit.MILLISECONDS);
     }
 
     private void generateCustomer() {
@@ -239,4 +273,9 @@ public class SimulationManager {
     public ServingLine getServingLine() {
         return servingLine;
     }
+
+    public CooksManager getCooksManager() {
+        return cooksManager;
+    }
+
 }
