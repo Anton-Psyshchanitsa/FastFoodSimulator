@@ -26,11 +26,13 @@ public class ServingLine {
         return orderIdToCustomerMap.get(orderId);
     }
 
+    // ДОБАВЛЯЕМ МЕТОД ДЛЯ УДАЛЕНИЯ КЛИЕНТА ПО orderId
     public synchronized Customer removeCustomerByOrderId(int orderId) {
         Customer customer = orderIdToCustomerMap.remove(orderId);
         if (customer != null) {
             waitingCustomers.remove(customer);
             customer.setState(Customer.CustomerState.COMPLETED);
+            System.out.println("Клиент #" + customer.getCustomerId() + " удален из serving line (заказ #" + orderId + ")");
         }
         return customer;
     }

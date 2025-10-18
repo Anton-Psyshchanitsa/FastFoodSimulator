@@ -119,12 +119,14 @@ public class MainController {
         kitchenQueueCount.setText("0");
         currentPickupOrder.setText("Нет заказа");
         servingQueueCount.setText("0");
+        waitingCustomersCount.setText("0"); // СБРАСЫВАЕМ НОВЫЙ СЧЕТЧИК
 
         customerQueue.clear();
         customerLabels.clear();
         customerQueueBox.getChildren().clear();
         kitchenQueueBox.getChildren().clear();
         servingQueueBox.getChildren().clear();
+        waitingCustomersBox.getChildren().clear(); // ОЧИЩАЕМ НОВЫЙ БЛОК
 
         customerIndicator.setFill(Color.GRAY);
         orderTakerIndicator.setFill(Color.GRAY);
@@ -267,7 +269,7 @@ public class MainController {
     public void updateWaitingCustomers(int count) {
         Platform.runLater(() -> {
             waitingCustomersCount.setText(String.valueOf(count));
-            updateWaitingCustomersList();
+            updateWaitingCustomersList(); // ОБНОВЛЯЕМ СПИСОК ПРИ ИЗМЕНЕНИИ КОЛИЧЕСТВА
         });
     }
 
@@ -569,8 +571,8 @@ public class MainController {
 
     public void completeOrder(int orderId) {
         Platform.runLater(() -> {
-            System.out.println("Заказ #" + orderId + " завершен");
-            // Можно добавить статистику или логирование завершенных заказов
+            System.out.println("Заказ #" + orderId + " завершен. Клиент покидает ресторан.");
+            // Автоматически обновляем список через updateWaitingCustomers
         });
     }
 

@@ -28,10 +28,10 @@ public class SimulationManager {
         this.orderTaker = new OrderTaker();
         this.kitchenQueue = new KitchenQueue();
         this.servingQueue = new ServingQueue();
-        this.servingLine = new ServingLine();
+        this.servingLine = new ServingLine(); // УБЕДИТЕСЬ, ЧТО servingLine ИНИЦИАЛИЗИРОВАН
         this.executor = Executors.newScheduledThreadPool(4);
         this.cookSimulation = new CookSimulation(controller, kitchenQueue, servingQueue);
-        this.serverSimulation = new ServerSimulation(controller, servingQueue);
+        this.serverSimulation = new ServerSimulation(controller, servingQueue, servingLine); // ПЕРЕДАЕМ servingLine
     }
 
     public void startSimulation(int customerInterval, int orderInterval, int cookingInterval, int servingInterval) {
@@ -81,7 +81,7 @@ public class SimulationManager {
                     controller.removeCustomerFromQueue(customer.getCustomerId());
                     controller.updateOrderTakerStatus(orderId);
                     controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
-                    controller.updateWaitingCustomers(servingLine.getWaitingCustomerCount());
+                    controller.updateWaitingCustomers(servingLine.getWaitingCustomerCount()); // ОБНОВЛЯЕМ UI
                     System.out.println("Заказ #" + orderId + " оформлен для клиента #" + customer.getCustomerId());
                 });
 
@@ -99,10 +99,6 @@ public class SimulationManager {
             System.err.println("Ошибка при обработке заказа: " + e.getMessage());
             orderTaker.completeOrder();
         }
-    }
-
-    public ServingLine getServingLine() {
-        return servingLine;
     }
 
     public void stopSimulation() {
@@ -170,5 +166,9 @@ public class SimulationManager {
 
     public ServingQueue getServingQueue() {
         return servingQueue;
+    }
+
+    public ServingLine getServingLine() {
+        return servingLine;
     }
 }
