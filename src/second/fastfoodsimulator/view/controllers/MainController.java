@@ -24,6 +24,12 @@ public class MainController {
     private TextField customerIntervalField;
     @FXML
     private TextField orderIntervalField;
+
+    @FXML
+    private TextField cookingIntervalField;
+
+    @FXML
+    private TextField servingIntervalField;
     @FXML
     private Label customerQueueCount;
     @FXML
@@ -145,22 +151,21 @@ public class MainController {
     @FXML
     private void startSimulation() {
         try {
-
-
             int customerInterval = Integer.parseInt(customerIntervalField.getText());
             int orderInterval = Integer.parseInt(orderIntervalField.getText());
-            int cookingInterval = 1500; // Фиксированный интервал приготовления
+            int cookingInterval = Integer.parseInt(cookingIntervalField.getText());
+            int servingInterval = Integer.parseInt(servingIntervalField.getText());
 
-            if (customerInterval <= 0 || orderInterval <= 0) {
-                showError("Интервалы должны быть положительными числами");
-                return;
-            }
+            simulationManager.startSimulation(customerInterval, orderInterval, cookingInterval, servingInterval);
 
-            simulationManager.startSimulation(customerInterval, orderInterval, cookingInterval);
+            // Блокируем поля ввода во время симуляции
             customerIntervalField.setDisable(true);
             orderIntervalField.setDisable(true);
+            cookingIntervalField.setDisable(true);
+            servingIntervalField.setDisable(true);
+            startButton.setDisable(true);
+            stopButton.setDisable(false);
 
-            System.out.println("Симуляция запущена с интервалами: " + customerInterval + ", " + orderInterval + ", " + cookingInterval);
         } catch (NumberFormatException e) {
             showError("Неверный формат ввода. Введите целые числа");
         } catch (Exception e) {
@@ -171,28 +176,31 @@ public class MainController {
     @FXML
     private void stopSimulation() {
         simulationManager.stopSimulation();
+
+        // Разблокируем поля ввода
         customerIntervalField.setDisable(false);
         orderIntervalField.setDisable(false);
+        cookingIntervalField.setDisable(false);
+        servingIntervalField.setDisable(false);
+        startButton.setDisable(false);
+        stopButton.setDisable(true);
 
         resetUI();
-
-        System.out.println("Симуляция остановлена");
     }
 
-    private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Ошибка");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
+    public void showError(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Ошибка симуляции");
+            alert.setHeaderText("Произошла ошибка");
+            alert.setContentText(message);
 
-        try {
+            // Устанавливаем иконку окна
             Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
-            stage.getIcons().add(new Image(getClass().getResource("/styles/error-icon.png").toExternalForm()));
-        } catch (Exception e) {
-            System.err.println("Не удалось загрузить иконку ошибки: " + e.getMessage());
-        }
+            stage.getIcons().add(new Image("/styles/error-icon.png"));
 
-        alert.showAndWait();
+            alert.showAndWait();
+        });
     }
 
     public void addCustomerToQueue(Customer customer) {
@@ -449,6 +457,44 @@ public class MainController {
                     customerPulseAnimation = null;
                 }
             }
+        });
+    }
+
+    public void updateServerStatus(int orderId) {
+        Platform.runLater(() -> {
+            if (orderId == -1) {
+                currentPickupOrder.setText("Нет заказа");
+                serverIndicator.setFill(Color.GRAY);
+                if (serverPulseAnimation != null) {
+                    serverPulseAnimation.stop();
+                    serverPulseAnimation = null;
+                }
+            } else {
+                currentPickupOrder.setText("Выдает заказ #" + orderId);
+                serverIndicator.setFill(Color.GOLD);
+
+                if (serverPulseAnimation != null) {
+                    serverPulseAnimation.stop();
+                }
+
+                ScaleTransition pulse = new ScaleTransition(Duration.millis(600), serverIndicator);
+                pulse.setFromX(1.0);
+                pulse.setFromY(1.0);
+                pulse.setToX(0.7);
+                pulse.setToY(0.7);
+                pulse.setAutoReverse(true);
+                pulse.setCycleCount(Animation.INDEFINITE);
+                pulse.play();
+
+                serverPulseAnimation = pulse;
+            }
+        });
+    }
+
+    public void completeOrder(int orderId) {
+        Platform.runLater(() -> {
+            System.out.println("Заказ #" + orderId + " завершен");
+            // Можно добавить статистику или логирование завершенных заказов
         });
     }
 
