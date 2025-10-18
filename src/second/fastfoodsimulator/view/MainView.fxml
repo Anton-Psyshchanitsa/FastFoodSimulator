@@ -49,6 +49,10 @@
                     <Label text="Количество поваров:" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold;" />
                     <TextField fx:id="cooksCountField" prefWidth="100" text="2" />
                 </VBox>
+                <VBox spacing="8">
+                    <Label text="Официанты:" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold;" />
+                    <TextField fx:id="serversCountField" prefWidth="70" text="1" />
+                </VBox>
 
                 <VBox spacing="10" alignment="CENTER">
                     <Button fx:id="startButton" text="СТАРТ"
@@ -155,6 +159,13 @@
                 <Label fx:id="activeCooksLabel" style="-fx-text-fill: #2ecc71; -fx-font-weight: bold;" text="(0/0 активны)" />
             </HBox>
 
+            <!-- Текущий заказ на кухне -->
+            <VBox spacing="10" alignment="CENTER">
+                <Label text="Текущий заказ:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
+                <Label fx:id="currentKitchenOrder" style="-fx-text-fill: #e74c3c; -fx-font-size: 20; -fx-font-weight: bold; -fx-wrap-text: true;"
+                       text="Нет заказа" />
+            </VBox>
+
             <!-- Статусы поваров -->
             <VBox spacing="10">
                 <Label text="Статусы поваров:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
@@ -178,18 +189,30 @@
             </VBox>
         </VBox>
 
-        <!-- Зона выдачи -->
+
+        <!-- Официанты и зона выдачи -->
         <VBox GridPane.columnIndex="3" style="-fx-background-color: #34495e; -fx-padding: 20; -fx-background-radius: 15;"
               spacing="15">
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <Label text="🚚 Зона выдачи" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold; -fx-font-size: 18;" />
+                <Label text="🍽️ Официанты" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold; -fx-font-size: 18;" />
                 <Circle fx:id="serverIndicator" radius="8" fill="#95a5a6" />
+                <Label fx:id="activeServersLabel" style="-fx-text-fill: #f39c12; -fx-font-weight: bold;" text="(0/0 активны)" />
             </HBox>
 
+            <!-- Текущий заказ на выдаче -->
             <VBox spacing="10" alignment="CENTER">
                 <Label text="Текущий заказ:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
                 <Label fx:id="currentPickupOrder" style="-fx-text-fill: #f39c12; -fx-font-size: 20; -fx-font-weight: bold; -fx-wrap-text: true;"
                        text="Нет заказа" />
+            </VBox>
+
+            <!-- Статусы официантов -->
+            <VBox spacing="10">
+                <Label text="Статусы официантов:" style="-fx-text-fill: #bdc3c7; -fx-font-weight: bold;" />
+                <ScrollPane prefHeight="120" fitToWidth="true"
+                            style="-fx-background-color: transparent; -fx-border-color: #2c3e50; -fx-border-radius: 8;">
+                    <VBox fx:id="serversStatusBox" spacing="8" />
+                </ScrollPane>
             </VBox>
 
             <!-- Готовые заказы -->
@@ -199,7 +222,7 @@
                     <Label text="Количество:" style="-fx-text-fill: #bdc3c7;" />
                     <Label fx:id="servingQueueCount" style="-fx-text-fill: #2ecc71; -fx-font-size: 20; -fx-font-weight: bold;" text="0" />
                 </HBox>
-                <ScrollPane prefHeight="120" fitToWidth="true"
+                <ScrollPane prefHeight="100" fitToWidth="true"
                             style="-fx-background-color: transparent; -fx-border-color: #2c3e50; -fx-border-radius: 8;">
                     <VBox fx:id="servingQueueBox" spacing="5" />
                 </ScrollPane>
@@ -214,7 +237,7 @@
                     <Label text="Количество:" style="-fx-text-fill: #bdc3c7;" />
                     <Label fx:id="waitingCustomersCount" style="-fx-text-fill: #9b59b6; -fx-font-size: 20; -fx-font-weight: bold;" text="0" />
                 </HBox>
-                <ScrollPane prefHeight="120" fitToWidth="true"
+                <ScrollPane prefHeight="100" fitToWidth="true"
                             style="-fx-background-color: transparent; -fx-border-color: #2c3e50; -fx-border-radius: 8;">
                     <VBox fx:id="waitingCustomersBox" spacing="5" />
                 </ScrollPane>

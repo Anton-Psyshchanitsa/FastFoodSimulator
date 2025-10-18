@@ -19,13 +19,14 @@ public class SimulationManager {
     private final KitchenQueue kitchenQueue;
     private final ServingQueue servingQueue;
     private final ServingLine servingLine;
-    private ScheduledExecutorService executor; // УБИРАЕМ FINAL
+    private ScheduledExecutorService executor;
     private CooksManager cooksManager;
-    private final ServerSimulation serverSimulation;
+    private ServersManager serversManager;
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
     private int customerCount = 0;
     private int cooksCount = 2;
+    private int serversCount = 1;
 
     public SimulationManager(MainController controller) {
         this.controller = controller;
@@ -33,11 +34,11 @@ public class SimulationManager {
         this.kitchenQueue = new KitchenQueue();
         this.servingQueue = new ServingQueue();
         this.servingLine = new ServingLine();
-        this.executor = Executors.newScheduledThreadPool(6);
-        this.serverSimulation = new ServerSimulation(controller, servingQueue, servingLine);
+        this.executor = Executors.newScheduledThreadPool(8);
     }
 
-    public void startSimulation(int customerInterval, int orderInterval, int cookingInterval, int servingInterval, int cooksCount) {
+    public void startSimulation(int customerInterval, int orderInterval, int cookingInterval,
+                                int servingInterval, int cooksCount, int serversCount) {
         if (isRunning.get()) {
             System.out.println("Симуляция уже запущена");
             return;
@@ -46,23 +47,25 @@ public class SimulationManager {
         try {
             validateIntervals(customerInterval, orderInterval, cookingInterval, servingInterval);
             this.cooksCount = cooksCount;
+            this.serversCount = serversCount;
 
             if (executor == null || executor.isShutdown() || executor.isTerminated()) {
                 System.out.println("Создаем новый ScheduledExecutorService");
-                executor = Executors.newScheduledThreadPool(4 + cooksCount);
+                executor = Executors.newScheduledThreadPool(4 + cooksCount + serversCount);
             }
 
             this.cooksManager = new CooksManager(cooksCount);
+            this.serversManager = new ServersManager(serversCount);
+
             resetSimulationState();
             isRunning.set(true);
 
-            // ЗАПУСКАЕМ ПРОЦЕСС ПРИГОТОВЛЕНИЯ С БОЛЕЕ ЧАСТОЙ ПЕРИОДИЧНОСТЬЮ
             executor.scheduleAtFixedRate(this::generateCustomer, 0, customerInterval, TimeUnit.MILLISECONDS);
             executor.scheduleAtFixedRate(this::processOrder, 0, orderInterval, TimeUnit.MILLISECONDS);
-            executor.scheduleAtFixedRate(this::processCooking, 0, Math.max(100, cookingInterval / 2), TimeUnit.MILLISECONDS); // УВЕЛИЧИВАЕМ ЧАСТОТУ
-            serverSimulation.startServing(servingInterval);
+            executor.scheduleAtFixedRate(this::processCooking, 0, Math.max(100, cookingInterval / 2), TimeUnit.MILLISECONDS);
+            executor.scheduleAtFixedRate(this::processServing, 0, Math.max(100, servingInterval / 2), TimeUnit.MILLISECONDS); // ЗАПУСКАЕМ ОБРАБОТКУ ОФИЦИАНТОВ
 
-            System.out.println("Симуляция запущена успешно с " + cooksCount + " поварами");
+            System.out.println("Симуляция запущена успешно с " + cooksCount + " поварами и " + serversCount + " официантами");
 
         } catch (IllegalArgumentException e) {
             Platform.runLater(() -> showErrorDialog(e.getMessage()));
@@ -81,11 +84,6 @@ public class SimulationManager {
         isRunning.set(false);
 
         try {
-            // Останавливаем все компоненты
-
-            serverSimulation.stopServing();
-
-            // Завершаем executor
             if (executor != null && !executor.isShutdown()) {
                 executor.shutdown();
                 if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
@@ -112,7 +110,9 @@ public class SimulationManager {
         if (cooksManager != null) {
             cooksManager.reset();
         }
-        serverSimulation.reset();
+        if (serversManager != null) {
+            serversManager.reset();
+        }
         second.fastfoodsimulator.util.OrderNumberGenerator.reset();
 
         System.out.println("Состояние симуляции полностью сброшено");
@@ -247,6 +247,70 @@ public class SimulationManager {
         alert.showAndWait();
     }
 
+    private void processServing() {
+        if (!isRunning.get()) return;
+
+        try {
+            int processed = 0;
+            int maxProcessPerCycle = serversManager.getTotalServersCount();
+
+            while (processed < maxProcessPerCycle) {
+                Server availableServer = serversManager.getAvailableServer();
+                if (availableServer == null) break;
+
+                Order order = servingQueue.getNextReadyOrder();
+                if (order == null) break;
+
+                startServing(availableServer, order);
+                processed++;
+            }
+
+            Platform.runLater(() -> {
+                controller.updateServersStatus(serversManager);
+            });
+
+        } catch (Exception e) {
+            System.err.println("Ошибка при обработке выдачи заказов: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void startServing(Server server, Order order) {
+        int orderId = server.startServing(order.getOrderId());
+
+        Platform.runLater(() -> {
+            controller.updateServerStatus(server.getServerId(), orderId);
+            controller.updateServingQueue(servingQueue.getReadyCount());
+            controller.updateServersStatus(serversManager);
+            System.out.println("Официант #" + server.getServerId() + " начинает выдавать заказ #" + orderId);
+        });
+
+        executor.schedule(() -> {
+            server.completeServing();
+            order.setState(Order.OrderState.COMPLETED);
+
+            long waitTime = calculateWaitTime(orderId);
+            servingLine.removeCustomerByOrderId(orderId);
+
+            Platform.runLater(() -> {
+                controller.updateServerStatus(server.getServerId(), -1);
+                controller.updateWaitingCustomers(servingLine.getWaitingCustomerCount());
+                controller.updateServersStatus(serversManager);
+                controller.completeOrder(orderId, waitTime);
+                System.out.println("Официант #" + server.getServerId() + " завершил выдачу заказа #" + orderId + ". Время ожидания: " + waitTime + "мс");
+            });
+        }, 800, TimeUnit.MILLISECONDS);
+    }
+
+    private long calculateWaitTime(int orderId) {
+        Customer customer = servingLine.getCustomerByOrderId(orderId);
+        if (customer != null && customer.getOrderStartTime() > 0) {
+            long waitTime = System.currentTimeMillis() - customer.getOrderStartTime();
+            return waitTime;
+        }
+        return 0;
+    }
+
     private void validateIntervals(int... intervals) {
         for (int interval : intervals) {
             if (interval <= 0) {
@@ -276,6 +340,10 @@ public class SimulationManager {
 
     public CooksManager getCooksManager() {
         return cooksManager;
+    }
+
+    public ServersManager getServersManager() {
+        return serversManager;
     }
 
 }

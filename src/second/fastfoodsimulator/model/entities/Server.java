@@ -1,28 +1,56 @@
 package second.fastfoodsimulator.model.entities;
 
 public class Server {
+    private final int serverId;
     private int currentOrderId = -1;
     private boolean busy;
+    private final Object lock = new Object();
 
-    public synchronized int startServing(int orderId) {
-        if (busy) return -1;
-
-        busy = true;
-        currentOrderId = orderId;
-        return currentOrderId;
+    public Server(int serverId) {
+        this.serverId = serverId;
+        this.busy = false;
     }
 
-    public synchronized void completeServing() {
-        busy = false;
-        currentOrderId = -1;
-        System.out.println("Сервер завершил выдачу, состояние сброшено");
+    public int startServing(int orderId) {
+        synchronized (lock) {
+            if (busy) return -1;
+
+            busy = true;
+            currentOrderId = orderId;
+            return currentOrderId;
+        }
     }
 
-    public synchronized int getCurrentOrderId() {
-        return currentOrderId;
+    public void completeServing() {
+        synchronized (lock) {
+            busy = false;
+            currentOrderId = -1;
+        }
     }
 
-    public synchronized boolean isBusy() {
-        return busy;
+    public int getCurrentOrderId() {
+        synchronized (lock) {
+            return currentOrderId;
+        }
+    }
+
+    public boolean isBusy() {
+        synchronized (lock) {
+            return busy;
+        }
+    }
+
+    public int getServerId() {
+        return serverId;
+    }
+
+    public String getStatus() {
+        synchronized (lock) {
+            if (busy) {
+                return "Официант #" + serverId + " выдает заказ #" + currentOrderId;
+            } else {
+                return "Официант #" + serverId + " свободен";
+            }
+        }
     }
 }
