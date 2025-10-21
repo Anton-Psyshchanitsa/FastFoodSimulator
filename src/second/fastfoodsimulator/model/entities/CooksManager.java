@@ -20,7 +20,6 @@ public class CooksManager {
 
     public synchronized Cook getAvailableCook() {
         for (Cook cook : cooks) {
-            // ДВОЙНАЯ ПРОВЕРКА С СИНХРОНИЗАЦИЕЙ
             synchronized (cook) {
                 if (!cook.isBusy()) {
                     return cook;
@@ -49,10 +48,6 @@ public class CooksManager {
 
     public synchronized int getTotalCooksCount() {
         return cooks.size();
-    }
-
-    public synchronized int getActiveCooksCount() {
-        return activeCooks.get();
     }
 
     public synchronized void reset() {

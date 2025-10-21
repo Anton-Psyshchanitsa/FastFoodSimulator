@@ -113,7 +113,6 @@ public class MainController {
     private void initialize() {
         System.out.println("Инициализация MainController с новым UI");
 
-        // Проверяем, что все элементы не null
         checkComponent("customerIntervalField", customerIntervalField);
         checkComponent("orderIntervalField", orderIntervalField);
         checkComponent("cookingIntervalField", cookingIntervalField);
@@ -124,7 +123,6 @@ public class MainController {
         checkComponent("orderTakerIndicator", orderTakerIndicator);
         checkComponent("serverIndicator", serverIndicator);
 
-        // Если serversCountField все еще null, создаем временное решение
         if (serversCountField == null) {
             System.err.println("CRITICAL: serversCountField is null! Creating temporary field.");
             serversCountField = new TextField();
@@ -212,7 +210,6 @@ public class MainController {
             simulationManager.startSimulation(customerInterval, orderInterval, cookingInterval,
                     servingInterval, cooksCount, serversCount);
 
-            // Блокируем поля ввода во время симуляции
             customerIntervalField.setDisable(true);
             orderIntervalField.setDisable(true);
             cookingIntervalField.setDisable(true);
@@ -235,7 +232,6 @@ public class MainController {
     private void stopSimulation() {
         simulationManager.stopSimulation();
 
-        // Разблокируем поля ввода
         customerIntervalField.setDisable(false);
         orderIntervalField.setDisable(false);
         cookingIntervalField.setDisable(false);
@@ -269,7 +265,6 @@ public class MainController {
     public void addCustomerToQueue(Customer customer) {
         System.out.println("Добавление клиента #" + customer.getCustomerId());
 
-        // СБОР СТАТИСТИКИ - КЛИЕНТ ПРИШЕЛ
         statisticsManager.customerArrived();
 
         synchronized (customerQueue) {
@@ -305,7 +300,6 @@ public class MainController {
     public void removeCustomerFromQueue(int customerId) {
         System.out.println("Удаление клиента #" + customerId);
 
-        // СБОР СТАТИСТИКИ - КЛИЕНТ ОБСЛУЖЕН
         statisticsManager.customerServed();
 
         synchronized (customerQueue) {
@@ -326,7 +320,6 @@ public class MainController {
     }
 
     public void updateCustomerQueueCount(int count) {
-        // СБОР СТАТИСТИКИ - ОБНОВЛЕНИЕ ОЧЕРЕДИ КЛИЕНТОВ
         statisticsManager.updateCustomerQueue(count);
 
         Platform.runLater(() -> {
@@ -352,12 +345,6 @@ public class MainController {
             updateCustomerQueueCount(customerQueue.size());
             System.out.println("Клиент #" + customer.getCustomerId() + " возвращен в очередь");
         });
-    }
-
-    public boolean hasWaitingCustomers() {
-        synchronized (customerQueue) {
-            return !customerQueue.isEmpty();
-        }
     }
 
     public void updateOrderTakerStatus(int orderId) {
@@ -394,7 +381,6 @@ public class MainController {
     }
 
     public void updateKitchenQueue(int count) {
-        // СБОР СТАТИСТИКИ - ОБНОВЛЕНИЕ ОЧЕРЕДИ ЗАКАЗОВ
         statisticsManager.updateKitchenQueue(count);
 
         Platform.runLater(() -> {
@@ -457,7 +443,6 @@ public class MainController {
 
     private void updateCooksIndicator(int busyCooksCount) {
         if (busyCooksCount > 0) {
-            // Есть активные повара - красный цвет с анимацией
             cooksIndicator.setFill(Color.RED);
 
             if (cooksPulseAnimation != null) {
@@ -511,10 +496,8 @@ public class MainController {
 
     public void updateServerStatus(int serverId, int orderId) {
         Platform.runLater(() -> {
-            // ИСПРАВЛЕННАЯ СТРОКА - получаем serversManager из simulationManager
             updateServersStatus(simulationManager.getServersManager());
 
-            // Обновляем общий индикатор serverIndicator
             if (orderId != -1) {
                 serverIndicator.setFill(Color.GOLD);
 
@@ -533,7 +516,6 @@ public class MainController {
 
                 serverPulseAnimation = pulse;
             } else {
-                // Проверить, есть ли активные официанты
                 ServersManager serversManager = simulationManager.getServersManager();
                 if (serversManager != null && serversManager.getBusyServersCount() == 0) {
                     serverIndicator.setFill(Color.GRAY);
@@ -604,7 +586,6 @@ public class MainController {
     }
 
     public void orderCreated(int orderId) {
-        // СБОР СТАТИСТИКИ - ЗАКАЗ СОЗДАН
         statisticsManager.orderCreated();
         System.out.println("Статистика: заказ #" + orderId + " создан");
 
@@ -612,7 +593,6 @@ public class MainController {
     }
 
     public void completeOrder(int orderId, long waitTime) {
-        // СБОР СТАТИСТИКИ - ЗАКАЗ ЗАВЕРШЕН С УЧЕТОМ ВРЕМЕНИ
         statisticsManager.orderCompleted(waitTime);
 
         Platform.runLater(() -> {

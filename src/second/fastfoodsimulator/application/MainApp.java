@@ -19,9 +19,8 @@ public class MainApp extends Application {
         primaryStage.setTitle("Fast Food Simulator");
         primaryStage.setScene(scene);
 
-        // УСТАНАВЛИВАЕМ ПОЛНОЭКРАННЫЙ РЕЖИМ
         primaryStage.setMaximized(true);
-        primaryStage.setFullScreen(false); // Можно использовать true для настоящего fullscreen
+        primaryStage.setFullScreen(false);
         primaryStage.setMinWidth(1200);
         primaryStage.setMinHeight(800);
 

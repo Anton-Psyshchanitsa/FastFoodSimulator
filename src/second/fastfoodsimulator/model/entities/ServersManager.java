@@ -50,10 +50,6 @@ public class ServersManager {
         return servers.size();
     }
 
-    public synchronized int getActiveServersCount() {
-        return activeServers.get();
-    }
-
     public synchronized void reset() {
         for (Server server : servers) {
             synchronized (server) {

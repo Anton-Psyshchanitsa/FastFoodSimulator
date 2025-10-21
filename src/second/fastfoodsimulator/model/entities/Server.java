@@ -28,12 +28,6 @@ public class Server {
         }
     }
 
-    public int getCurrentOrderId() {
-        synchronized (lock) {
-            return currentOrderId;
-        }
-    }
-
     public boolean isBusy() {
         synchronized (lock) {
             return busy;

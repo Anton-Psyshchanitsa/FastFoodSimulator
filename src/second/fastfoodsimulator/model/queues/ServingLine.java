@@ -22,7 +22,6 @@ public class ServingLine {
         orderIdToCustomerMap.put(orderId, customer);
     }
 
-    // ДОБАВЛЯЕМ МЕТОД ДЛЯ УДАЛЕНИЯ КЛИЕНТА ПО orderId
     public synchronized Customer removeCustomerByOrderId(int orderId) {
         Customer customer = orderIdToCustomerMap.remove(orderId);
         if (customer != null) {
@@ -39,14 +38,6 @@ public class ServingLine {
 
     public synchronized List<Customer> getAllWaitingCustomers() {
         return new ArrayList<>(waitingCustomers);
-    }
-
-    public synchronized List<Integer> getWaitingOrderIds() {
-        return new ArrayList<>(orderIdToCustomerMap.keySet());
-    }
-
-    public synchronized boolean isEmpty() {
-        return waitingCustomers.isEmpty();
     }
 
     public synchronized void clear() {

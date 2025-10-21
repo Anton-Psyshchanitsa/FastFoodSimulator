@@ -7,7 +7,6 @@ public class Order {
 
     public enum OrderState {
         NEW,
-        IN_PROGRESS,
         READY,
         COMPLETED
     }
@@ -22,15 +21,7 @@ public class Order {
         return orderId;
     }
 
-    public OrderState getState() {
-        return state;
-    }
-
     public void setState(OrderState state) {
         this.state = state;
-    }
-
-    public long getCreationTime() {
-        return creationTime;
     }
 }

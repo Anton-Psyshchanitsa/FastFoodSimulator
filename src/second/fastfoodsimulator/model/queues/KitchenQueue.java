@@ -24,16 +24,6 @@ public class KitchenQueue {
         return orders.size();
     }
 
-    public synchronized boolean isEmpty() {
-        return orders.isEmpty();
-    }
-
-    // Метод для получения всех заказов с реальными ID
-    public synchronized List<Order> getAllOrders() {
-        return new ArrayList<>(orders);
-    }
-
-    // Метод для получения списка ID заказов
     public synchronized List<Integer> getOrderIds() {
         List<Integer> orderIds = new ArrayList<>();
         for (Order order : orders) {
@@ -42,7 +32,6 @@ public class KitchenQueue {
         return orderIds;
     }
 
-    // ДОБАВЛЯЕМ МЕТОД ДЛЯ ОЧИСТКИ ОЧЕРЕДИ
     public synchronized void clear() {
         orders.clear();
     }

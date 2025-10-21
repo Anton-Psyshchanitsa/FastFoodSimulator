@@ -25,16 +25,6 @@ public class ServingQueue {
         return readyOrders.size();
     }
 
-    public synchronized boolean isEmpty() {
-        return readyOrders.isEmpty();
-    }
-
-    // Метод для получения всех готовых заказов
-    public synchronized List<Order> getAllReadyOrders() {
-        return new ArrayList<>(readyOrders);
-    }
-
-    // Метод для получения списка ID готовых заказов
     public synchronized List<Integer> getReadyOrderIds() {
         List<Integer> orderIds = new ArrayList<>();
         for (Order order : readyOrders) {
@@ -43,7 +33,6 @@ public class ServingQueue {
         return orderIds;
     }
 
-    // ДОБАВЛЯЕМ МЕТОД ДЛЯ ОЧИСТКИ ОЧЕРЕДИ
     public synchronized void clear() {
         readyOrders.clear();
     }

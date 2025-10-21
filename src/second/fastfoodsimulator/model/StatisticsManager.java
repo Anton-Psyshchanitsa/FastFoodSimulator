@@ -17,7 +17,6 @@ public class StatisticsManager {
 
     public void startSimulation() {
         simulationStartTime = System.currentTimeMillis();
-        // УБИРАЕМ reset() чтобы статистика не сбрасывалась при каждом запуске
     }
 
     public void reset() {
@@ -32,7 +31,6 @@ public class StatisticsManager {
         simulationStartTime = System.currentTimeMillis();
     }
 
-    // Методы для обновления статистики
     public void customerArrived() {
         totalCustomers.incrementAndGet();
         currentCustomerQueue++;
@@ -49,7 +47,6 @@ public class StatisticsManager {
         updateMaxKitchenQueue();
     }
 
-    // ДОБАВЛЯЕМ МЕТОД ДЛЯ УЧЕТА ЗАВЕРШЕННЫХ ЗАКАЗОВ
     public void orderCompleted(long waitTime) {
         completedOrders.incrementAndGet();
         totalWaitTime.addAndGet(waitTime);
@@ -82,10 +79,6 @@ public class StatisticsManager {
 
     public int getTotalOrders() {
         return totalOrders.get();
-    }
-
-    public int getCompletedOrders() {
-        return completedOrders.get();
     }
 
     public int getMaxCustomerQueue() {

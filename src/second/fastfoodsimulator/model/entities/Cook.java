@@ -4,7 +4,7 @@ public class Cook {
     private final int cookId;
     private int currentOrderId = -1;
     private boolean busy;
-    private final Object lock = new Object(); // Объект для синхронизации
+    private final Object lock = new Object();
 
     public Cook(int cookId) {
         this.cookId = cookId;
@@ -25,12 +25,6 @@ public class Cook {
         synchronized (lock) {
             busy = false;
             currentOrderId = -1;
-        }
-    }
-
-    public int getCurrentOrderId() {
-        synchronized (lock) {
-            return currentOrderId;
         }
     }
 

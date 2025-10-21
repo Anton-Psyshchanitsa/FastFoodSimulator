@@ -20,10 +20,6 @@ public class OrderTaker {
         System.out.println("Кассир завершил оформление заказа, состояние сброшено");
     }
 
-    public synchronized int getCurrentOrderId() {
-        return currentOrderId;
-    }
-
     public synchronized boolean isBusy() {
         return busy;
     }

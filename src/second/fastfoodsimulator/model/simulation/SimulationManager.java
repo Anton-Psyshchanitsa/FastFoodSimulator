@@ -122,7 +122,6 @@ public class SimulationManager {
         if (!isRunning.get()) return;
 
         try {
-            // ОБРАБАТЫВАЕМ ВСЕХ СВОБОДНЫХ ПОВАРОВ ОДНОВРЕМЕННО
             int processed = 0;
             int maxProcessPerCycle = cooksManager.getTotalCooksCount(); // Максимум поваров за цикл
 
@@ -137,7 +136,6 @@ public class SimulationManager {
                 processed++;
             }
 
-            // ОБНОВЛЯЕМ СТАТУСЫ ВСЕХ ПОВАРОВ ДАЖЕ ЕСЛИ НИЧЕГО НЕ ПРОИСХОДИТ
             Platform.runLater(() -> {
                 controller.updateCooksStatus(cooksManager);
             });
@@ -202,7 +200,6 @@ public class SimulationManager {
 
                 servingLine.addCustomer(customer, orderId);
 
-                // ЗАПОМИНАЕМ ВРЕМЯ НАЧАЛА ОЖИДАНИЯ
                 customer.setOrderStartTime(System.currentTimeMillis());
 
                 Platform.runLater(() -> {
@@ -210,7 +207,6 @@ public class SimulationManager {
                     controller.updateOrderTakerStatus(orderId);
                     controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
                     controller.updateWaitingCustomers(servingLine.getWaitingCustomerCount());
-                    // УВЕДОМЛЯЕМ О СОЗДАНИИ ЗАКАЗА
                     controller.orderCreated(orderId);
                     System.out.println("Заказ #" + orderId + " оформлен для клиента #" + customer.getCustomerId());
                 });
@@ -230,7 +226,6 @@ public class SimulationManager {
         }
     }
 
-    // ДОБАВЛЯЕМ МЕТОД ДЛЯ ПОКАЗА ОШИБОК
     private void showErrorDialog(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Ошибка симуляции");
