@@ -19,6 +19,8 @@ public class SimulationManager {
     private final KitchenQueue kitchenQueue;
     private final ServingQueue servingQueue;
     private final ServingLine servingLine;
+    private int cookingIntervalField;
+    private int servingIntervalField;
     private ScheduledExecutorService executor;
     private CooksManager cooksManager;
     private ServersManager serversManager;
@@ -48,6 +50,8 @@ public class SimulationManager {
             validateIntervals(customerInterval, orderInterval, cookingInterval, servingInterval);
             this.cooksCount = cooksCount;
             this.serversCount = serversCount;
+            this.cookingIntervalField = cookingInterval;
+            this.servingIntervalField = servingInterval;
 
             if (executor == null || executor.isShutdown() || executor.isTerminated()) {
                 System.out.println("Создаем новый ScheduledExecutorService");
@@ -66,6 +70,7 @@ public class SimulationManager {
             executor.scheduleAtFixedRate(this::processServing, 0, Math.max(100, servingInterval / 2), TimeUnit.MILLISECONDS); // ЗАПУСКАЕМ ОБРАБОТКУ ОФИЦИАНТОВ
 
             System.out.println("Симуляция запущена успешно с " + cooksCount + " поварами и " + serversCount + " официантами");
+            System.out.println("Интервал приготовления: " + cookingInterval + "мс");
 
         } catch (IllegalArgumentException e) {
             Platform.runLater(() -> showErrorDialog(e.getMessage()));
@@ -153,10 +158,10 @@ public class SimulationManager {
             controller.updateCookStatus(cook.getCookId(), orderId);
             controller.updateKitchenQueue(kitchenQueue.getWaitingCount());
             controller.updateCooksStatus(cooksManager);
-            System.out.println("Повар #" + cook.getCookId() + " начинает готовить заказ #" + orderId);
+            System.out.println("Повар #" + cook.getCookId() + " начинает готовить заказ #" + orderId +
+                    " (время: " + cookingIntervalField + "мс)");
         });
 
-        // Имитация приготовления заказа
         executor.schedule(() -> {
             cook.completeCooking();
             servingQueue.addReadyOrder(order);
@@ -165,9 +170,10 @@ public class SimulationManager {
                 controller.updateCookStatus(cook.getCookId(), -1);
                 controller.updateServingQueue(servingQueue.getReadyCount());
                 controller.updateCooksStatus(cooksManager);
-                System.out.println("Повар #" + cook.getCookId() + " завершил заказ #" + orderId);
+                System.out.println("Повар #" + cook.getCookId() + " завершил заказ #" + orderId +
+                        " (приготовление заняло: " + cookingIntervalField + "мс)");
             });
-        }, 1000, TimeUnit.MILLISECONDS);
+        }, cookingIntervalField, TimeUnit.MILLISECONDS);
     }
 
     private void generateCustomer() {
@@ -294,7 +300,7 @@ public class SimulationManager {
                 controller.completeOrder(orderId, waitTime);
                 System.out.println("Официант #" + server.getServerId() + " завершил выдачу заказа #" + orderId + ". Время ожидания: " + waitTime + "мс");
             });
-        }, 800, TimeUnit.MILLISECONDS);
+        }, servingIntervalField, TimeUnit.MILLISECONDS);
     }
 
     private long calculateWaitTime(int orderId) {

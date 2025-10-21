@@ -2,7 +2,7 @@
     -fx-font-family: "Segoe UI", Arial, sans-serif;
 }
 
-/* Стили для текстовых полей */
+/* стили для текстовых полей */
 .text-field {
     -fx-background-color: #ecf0f1;
     -fx-border-color: #bdc3c7;
@@ -15,7 +15,7 @@
     -fx-effect: dropshadow(gaussian, rgba(52, 152, 219, 0.3), 10, 0, 0, 0);
 }
 
-/* Стили для кнопок */
+/* стили для кнопок */
 .button {
     -fx-cursor: hand;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 8, 0, 0, 2);
@@ -61,12 +61,12 @@
     -fx-background-color: #4a6278;
 }
 
-/* Анимации для элементов */
+/* анимации для элементов */
 .label {
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 2, 0, 1, 1);
 }
 
-/* Стили для индикаторов */
+/* стили для индикаторов */
 .circle {
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 1, 1);
 }
